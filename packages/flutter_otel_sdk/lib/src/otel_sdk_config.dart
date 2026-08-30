@@ -92,10 +92,13 @@ class OTelSdkConfig {
   /// dropped. Shared across both signals (see [scheduledDelay]).
   final int maxQueueSize;
 
-  /// The HTTP client used by the OTLP exporters. If omitted, the SDK
-  /// constructs (and owns/closes) a default `http.Client()`, shared by
-  /// both the logs and traces exporters. Ignored for a signal whose
-  /// exporter is overridden ([logExporter]/[spanExporter]).
+  /// The HTTP client used by the OTLP exporters. When set, this same client
+  /// instance is passed to (and shared by) both the logs and traces
+  /// exporters. When omitted, [OTelSdk.initialize] constructs and owns a
+  /// separate default `http.Client()` for each exporter that needs one — one
+  /// for logs, one for traces, not a single shared client — and closes each
+  /// on shutdown. Ignored for a signal whose exporter is overridden
+  /// ([logExporter]/[spanExporter]).
   final http.Client? httpClient;
 
   /// Overrides the log exporter entirely (e.g. for tests or a custom

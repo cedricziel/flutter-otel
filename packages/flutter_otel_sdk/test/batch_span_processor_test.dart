@@ -50,9 +50,14 @@ void main() {
       );
       addTearDown(processor.shutdown);
 
+      final exported = exporter.nextExport;
       processor.onEnd(_span('one'));
       processor.onEnd(_span('two'));
-      await processor.forceFlush();
+      // Await the processor's own automatic export triggered by onEnd
+      // reaching maxExportBatchSize — not a forced flush — so a regression
+      // that removes the auto-flush-on-threshold logic would actually fail
+      // this test (it would otherwise hang and time out).
+      await exported;
 
       expect(exporter.allSpans.map((s) => s.name), ['one', 'two']);
       expect(processor.queueLength, 0);
@@ -171,6 +176,47 @@ void main() {
       processor.onEnd(_span('one'));
 
       await expectLater(processor.forceFlush(), completes);
+    });
+
+    test('throws ArgumentError for a non-positive maxQueueSize', () {
+      expect(
+        () => BatchSpanProcessor(exporter, resource, maxQueueSize: 0),
+        throwsArgumentError,
+      );
+      expect(
+        () => BatchSpanProcessor(exporter, resource, maxQueueSize: -1),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws ArgumentError for a non-positive maxExportBatchSize', () {
+      expect(
+        () => BatchSpanProcessor(exporter, resource, maxExportBatchSize: 0),
+        throwsArgumentError,
+      );
+      expect(
+        () => BatchSpanProcessor(exporter, resource, maxExportBatchSize: -5),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws ArgumentError for a non-positive scheduledDelay', () {
+      expect(
+        () => BatchSpanProcessor(
+          exporter,
+          resource,
+          scheduledDelay: Duration.zero,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => BatchSpanProcessor(
+          exporter,
+          resource,
+          scheduledDelay: const Duration(seconds: -1),
+        ),
+        throwsArgumentError,
+      );
     });
   });
 }

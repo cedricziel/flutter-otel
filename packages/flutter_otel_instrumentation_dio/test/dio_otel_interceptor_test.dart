@@ -519,6 +519,77 @@ void main() {
         throwsA(isA<DioException>()),
       );
     });
+
+    test(
+        'onResponse marks the span as an error for a 4xx/5xx status reached '
+        'via validateStatus (not just onError)', () {
+      final tracer = _RecordingTracer();
+      final interceptor = DioOTelInterceptor(logger, tracer: tracer);
+      final options = buildRequestOptions();
+      interceptor.onRequest(options, RequestInterceptorHandler());
+
+      final response = Response<dynamic>(
+        requestOptions: options,
+        statusCode: 503,
+      );
+      final handler = ResponseInterceptorHandler();
+      interceptor.onResponse(response, handler);
+
+      final span = tracer.startedSpans.single;
+      expect(span.ended, isTrue);
+      expect(span.statusCode, StatusCode.error);
+      expect(span.attributes['http.status_code'], 503);
+      expect(handler.isCompleted, isTrue);
+    });
+
+    test('onResponse keeps an ok status for a 2xx/3xx response', () {
+      final tracer = _RecordingTracer();
+      final interceptor = DioOTelInterceptor(logger, tracer: tracer);
+      final options = buildRequestOptions();
+      interceptor.onRequest(options, RequestInterceptorHandler());
+
+      final response = Response<dynamic>(
+        requestOptions: options,
+        statusCode: 302,
+      );
+      interceptor.onResponse(response, ResponseInterceptorHandler());
+
+      final span = tracer.startedSpans.single;
+      expect(span.statusCode, StatusCode.ok);
+    });
+
+    test(
+        'two interceptor instances on one Dio client each end and export '
+        'their own span without clobbering the other', () async {
+      final tracerA = _RecordingTracer();
+      final tracerB = _RecordingTracer();
+      final loggerA = _RecordingLogger();
+      final loggerB = _RecordingLogger();
+      final interceptorA = DioOTelInterceptor(loggerA, tracer: tracerA);
+      final interceptorB = DioOTelInterceptor(loggerB, tracer: tracerB);
+
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
+        ..interceptors.add(interceptorA)
+        ..interceptors.add(interceptorB)
+        ..httpClientAdapter = _FakeAdapter(statusCode: 200);
+
+      await dio.get<void>('/widgets');
+
+      expect(tracerA.startedSpans, hasLength(1));
+      expect(tracerB.startedSpans, hasLength(1));
+
+      final spanA = tracerA.startedSpans.single;
+      final spanB = tracerB.startedSpans.single;
+
+      // Each interceptor's own span must have ended and been given a
+      // status; neither should have been overwritten/dropped by the other
+      // interceptor's use of `extra`.
+      expect(spanA.ended, isTrue);
+      expect(spanB.ended, isTrue);
+      expect(spanA.statusCode, StatusCode.ok);
+      expect(spanB.statusCode, StatusCode.ok);
+      expect(identical(spanA, spanB), isFalse);
+    });
   });
 }
 

@@ -113,5 +113,59 @@ void main() {
         isNull,
       );
     });
+
+    test('returns null for a version-00 header with trailing garbage', () {
+      // Version 00 is not forward-compatible: it must be exactly the
+      // 4-field shape, nothing appended.
+      expect(
+        parseTraceparent(
+          '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-extra',
+        ),
+        isNull,
+      );
+    });
+
+    test(
+        'parses a version-01+ header with valid known fields plus trailing '
+        'extra fields', () {
+      final parsed = parseTraceparent(
+        '01-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-rojo-something',
+      );
+      expect(parsed, isNotNull);
+      expect(parsed!.traceId, '4bf92f3577b34da6a3ce929d0e0e4736');
+      expect(parsed.spanId, '00f067aa0ba902b7');
+      expect(parsed.isRemote, isTrue);
+    });
+
+    test(
+        'parses a version-fe header (highest non-reserved version) with '
+        'extra fields', () {
+      final parsed = parseTraceparent(
+        'fe-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00-extra-more',
+      );
+      expect(parsed, isNotNull);
+      expect(parsed!.traceId, '4bf92f3577b34da6a3ce929d0e0e4736');
+      expect(parsed.spanId, '00f067aa0ba902b7');
+    });
+
+    test(
+        'returns null for the reserved version "ff" even with no trailing '
+        'fields', () {
+      expect(
+        parseTraceparent(
+          'ff-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+        ),
+        isNull,
+      );
+    });
+
+    test('returns null for the reserved version "ff" with trailing fields', () {
+      expect(
+        parseTraceparent(
+          'ff-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-extra',
+        ),
+        isNull,
+      );
+    });
   });
 }

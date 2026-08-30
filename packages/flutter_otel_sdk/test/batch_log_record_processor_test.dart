@@ -40,9 +40,14 @@ void main() {
       );
       addTearDown(processor.shutdown);
 
+      final exported = exporter.nextExport;
       processor.onEmit(LogRecord(body: 'one'));
       processor.onEmit(LogRecord(body: 'two'));
-      await processor.forceFlush();
+      // Await the processor's own automatic export triggered by onEmit
+      // reaching maxExportBatchSize — not a forced flush — so a regression
+      // that removes the auto-flush-on-threshold logic would actually fail
+      // this test (it would otherwise hang and time out).
+      await exported;
 
       expect(exporter.allRecords.map((r) => r.body), ['one', 'two']);
       expect(processor.queueLength, 0);
@@ -156,6 +161,52 @@ void main() {
       processor.onEmit(LogRecord(body: 'one'));
 
       await expectLater(processor.forceFlush(), completes);
+    });
+
+    test('throws ArgumentError for a non-positive maxQueueSize', () {
+      expect(
+        () => BatchLogRecordProcessor(exporter, resource, maxQueueSize: 0),
+        throwsArgumentError,
+      );
+      expect(
+        () => BatchLogRecordProcessor(exporter, resource, maxQueueSize: -1),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws ArgumentError for a non-positive maxExportBatchSize', () {
+      expect(
+        () =>
+            BatchLogRecordProcessor(exporter, resource, maxExportBatchSize: 0),
+        throwsArgumentError,
+      );
+      expect(
+        () => BatchLogRecordProcessor(
+          exporter,
+          resource,
+          maxExportBatchSize: -5,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws ArgumentError for a non-positive scheduledDelay', () {
+      expect(
+        () => BatchLogRecordProcessor(
+          exporter,
+          resource,
+          scheduledDelay: Duration.zero,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => BatchLogRecordProcessor(
+          exporter,
+          resource,
+          scheduledDelay: const Duration(seconds: -1),
+        ),
+        throwsArgumentError,
+      );
     });
   });
 }

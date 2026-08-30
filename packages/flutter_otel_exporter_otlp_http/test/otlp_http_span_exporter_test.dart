@@ -337,6 +337,23 @@ void main() {
       expect(result.error, isA<SocketExceptionStub>());
     });
 
+    test(
+        "a custom 'Content-Type' header in config cannot override the "
+        'required OTLP JSON content type', () async {
+      final exporter = OtlpHttpSpanExporter(
+        endpoint: Uri.parse('https://collector.example.com/v1/traces'),
+        httpClient: buildClient(200),
+        headers: const {'Content-Type': 'text/plain'},
+      );
+
+      await exporter.export(
+        [buildSpan()],
+        OTelResource(serviceName: 'trueapp'),
+      );
+
+      expect(capturedHeaders['content-type'], 'application/json');
+    });
+
     test('shutdown does not close an externally-owned client', () async {
       var closeCalled = false;
       final client = _CloseTrackingClient(

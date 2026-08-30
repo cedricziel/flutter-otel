@@ -19,6 +19,27 @@ class BatchLogRecordProcessor implements LogRecordProcessor {
     this.maxExportBatchSize = 512,
     this.scheduledDelay = const Duration(seconds: 5),
   }) {
+    if (maxQueueSize <= 0) {
+      throw ArgumentError.value(
+        maxQueueSize,
+        'maxQueueSize',
+        'Must be greater than 0.',
+      );
+    }
+    if (maxExportBatchSize <= 0) {
+      throw ArgumentError.value(
+        maxExportBatchSize,
+        'maxExportBatchSize',
+        'Must be greater than 0.',
+      );
+    }
+    if (scheduledDelay <= Duration.zero) {
+      throw ArgumentError.value(
+        scheduledDelay,
+        'scheduledDelay',
+        'Must be greater than Duration.zero.',
+      );
+    }
     _timer = Timer.periodic(scheduledDelay, (_) => unawaited(_flushBatches()));
   }
 

@@ -53,8 +53,8 @@ class OtlpHttpLogExporter implements LogRecordExporter {
       final response = await _httpClient.post(
         _endpoint,
         headers: {
-          'Content-Type': 'application/json',
           ..._headers,
+          'Content-Type': 'application/json',
         },
         body: body,
       );

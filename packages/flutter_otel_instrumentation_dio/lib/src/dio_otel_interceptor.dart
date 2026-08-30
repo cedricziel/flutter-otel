@@ -35,10 +35,23 @@ class DioOTelInterceptor extends Interceptor {
     DateTime Function()? clock,
     this.includeQueryParameters = false,
   })  : _tracer = tracer,
-        _clock = clock ?? DateTime.now;
+        _clock = clock ?? DateTime.now,
+        _spanKey = 'flutter_otel.span.${_instanceCounter++}';
 
   static const String _startTimeKey = 'flutter_otel.start_time';
-  static const String _spanKey = 'flutter_otel.span';
+
+  /// Monotonically increasing counter used to derive a unique [_spanKey]
+  /// per instance ([RequestOptions.extra] keys must be [String]s, so a
+  /// bare identity-based [Object] key can't be used directly).
+  static int _instanceCounter = 0;
+
+  /// Instance-specific key used to stash the in-flight span in
+  /// [RequestOptions.extra]. Must not be a shared static/const key: if two
+  /// [DioOTelInterceptor] instances are attached to the same [Dio] client,
+  /// a shared key would let the second interceptor's span overwrite the
+  /// first's in `extra`, so the first span would never be retrieved,
+  /// `end()`'d, or exported.
+  final String _spanKey;
 
   final Logger _logger;
   final Tracer? _tracer;
@@ -107,10 +120,17 @@ class DioOTelInterceptor extends Interceptor {
     _safeTrace(() {
       final span = _takeSpan(response.requestOptions);
       if (span == null) return;
-      if (response.statusCode != null) {
-        span.setAttribute('http.status_code', response.statusCode);
+      final statusCode = response.statusCode;
+      if (statusCode != null) {
+        span.setAttribute('http.status_code', statusCode);
       }
-      span.setStatus(StatusCode.ok);
+      // A CLIENT span must be marked as an error for 4xx/5xx responses per
+      // OTel HTTP semantic conventions, even when Dio's `validateStatus` is
+      // configured to treat such a status as non-throwing and route it here
+      // (rather than to onError).
+      final isError =
+          statusCode != null && statusCode >= 400 && statusCode < 600;
+      span.setStatus(isError ? StatusCode.error : StatusCode.ok);
       span.end();
     });
     handler.next(response);
