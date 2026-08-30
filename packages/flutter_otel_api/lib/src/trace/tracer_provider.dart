@@ -1,7 +1,7 @@
 import 'tracer.dart';
 
-/// Vends [Tracer]s, mirroring [LoggerProvider]'s shape for the future
-/// traces signal.
+/// Vends [Tracer]s, mirroring `LoggerProvider`'s shape for the traces
+/// signal.
 abstract class TracerProvider {
   /// Returns a [Tracer] for the given instrumentation scope.
   Tracer getTracer({String name = 'flutter_otel', String? version});
@@ -13,8 +13,8 @@ abstract class TracerProvider {
   Future<void> shutdown();
 }
 
-/// No-op [TracerProvider] used until a real tracing SDK implementation
-/// exists. Always returns a [NoopTracer]; flush/shutdown are instant no-ops.
+/// No-op [TracerProvider] used when tracing has no backing SDK. Always
+/// returns a [NoopTracer]; flush/shutdown are instant no-ops.
 class NoopTracerProvider implements TracerProvider {
   const NoopTracerProvider();
 

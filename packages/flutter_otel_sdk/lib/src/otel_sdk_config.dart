@@ -8,6 +8,7 @@ class OTelSdkConfig {
     this.enabled = true,
     this.otlpEndpoint,
     this.otlpLogsEndpoint,
+    this.otlpTracesEndpoint,
     this.otlpHeaders = const {},
     this.sessionTrackingEnabled = true,
     this.sessionTimeout = const Duration(minutes: 30),
@@ -16,6 +17,7 @@ class OTelSdkConfig {
     this.maxQueueSize = 2048,
     this.httpClient,
     this.logExporter,
+    this.spanExporter,
   }) {
     if (maxQueueSize <= 0) {
       throw ArgumentError.value(
@@ -48,13 +50,18 @@ class OTelSdkConfig {
   final bool enabled;
 
   /// General OTLP base endpoint (mirrors `OTEL_EXPORTER_OTLP_ENDPOINT`).
-  /// The logs exporter resolves `/v1/logs` against it. Ignored if
-  /// [otlpLogsEndpoint] or [logExporter] is set.
+  /// The logs exporter resolves `/v1/logs` and the traces exporter resolves
+  /// `/v1/traces` against it. Ignored per-signal when that signal's
+  /// specific endpoint or exporter override is set.
   final Uri? otlpEndpoint;
 
   /// Explicit logs endpoint override (mirrors
   /// `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`), used verbatim when set.
   final Uri? otlpLogsEndpoint;
+
+  /// Explicit traces endpoint override (mirrors
+  /// `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`), used verbatim when set.
+  final Uri? otlpTracesEndpoint;
 
   /// Extra HTTP headers sent with every OTLP export request (mirrors
   /// `OTEL_EXPORTER_OTLP_HEADERS`).
@@ -68,21 +75,34 @@ class OTelSdkConfig {
   /// new session on the next activity.
   final Duration sessionTimeout;
 
-  /// How often [BatchLogRecordProcessor] flushes on its periodic timer.
+  /// How often [BatchLogRecordProcessor]/[BatchSpanProcessor] flush on
+  /// their periodic timer.
+  ///
+  /// Shared across both signals rather than duplicated as
+  /// per-signal settings — a deliberate simplification for this pass; a
+  /// later change could split logs/traces batch tuning if they ever need
+  /// to diverge.
   final Duration scheduledDelay;
 
-  /// The maximum number of records exported in a single batch.
+  /// The maximum number of records/spans exported in a single batch.
+  /// Shared across both signals (see [scheduledDelay]).
   final int maxExportBatchSize;
 
-  /// The maximum number of records buffered before older ones are dropped.
+  /// The maximum number of records/spans buffered before older ones are
+  /// dropped. Shared across both signals (see [scheduledDelay]).
   final int maxQueueSize;
 
-  /// The HTTP client used by the OTLP exporter. If omitted, the SDK
-  /// constructs (and owns/closes) a default `http.Client()`. Ignored when
-  /// [logExporter] is set.
+  /// The HTTP client used by the OTLP exporters. If omitted, the SDK
+  /// constructs (and owns/closes) a default `http.Client()`, shared by
+  /// both the logs and traces exporters. Ignored for a signal whose
+  /// exporter is overridden ([logExporter]/[spanExporter]).
   final http.Client? httpClient;
 
-  /// Overrides the exporter entirely (e.g. for tests or a custom sink),
-  /// bypassing [otlpEndpoint]/[otlpLogsEndpoint] resolution.
+  /// Overrides the log exporter entirely (e.g. for tests or a custom
+  /// sink), bypassing [otlpEndpoint]/[otlpLogsEndpoint] resolution.
   final LogRecordExporter? logExporter;
+
+  /// Overrides the span exporter entirely (e.g. for tests or a custom
+  /// sink), bypassing [otlpEndpoint]/[otlpTracesEndpoint] resolution.
+  final SpanExporter? spanExporter;
 }

@@ -2,11 +2,16 @@
 
 An [OpenTelemetry](https://opentelemetry.io/) client SDK for Flutter apps.
 
-It implements the **logs** signal today — structured log records, optional
-rolling session tracking, and a JSON-encoded OTLP/HTTP exporter — with the
-core deliberately kept signal-agnostic (Resource + a processor/exporter
-pipeline pattern shared across signals) so **traces** and **metrics** can
-slot in later without reshaping the logs code.
+It implements the **logs** and **traces** signals today — structured log
+records, spans with attributes/events/status, optional rolling session
+tracking, JSON-encoded OTLP/HTTP exporters for both signals, and automatic
+trace-to-log correlation (a log emitted while a span is active is
+automatically stamped with that span's trace/span IDs, with no manual
+plumbing) — with the core deliberately kept signal-agnostic (Resource + a
+processor/exporter pipeline pattern shared across signals) so **metrics**
+can slot in later without reshaping this code. W3C Trace Context
+(`traceparent`) propagation is supported for outgoing HTTP requests via
+`flutter_otel_instrumentation_dio`.
 
 ## Platform support
 
@@ -31,15 +36,19 @@ flutter-otel/
   pubspec.yaml                          # workspace root manifest only
   packages/
     flutter_otel_api/                   # pure Dart core: Resource, log types,
+                                         # Span/Tracer/TracerProvider,
                                          # processor/exporter interfaces,
-                                         # trace/metric stubs
-    flutter_otel_sdk/                   # concrete SDK: processors, session
-                                         # tracking, the OTelSdk facade
+                                         # W3C trace-context helpers, a
+                                         # metrics stub
+    flutter_otel_sdk/                   # concrete SDK: log/span processors,
+                                         # session tracking, the OTelSdk facade
                                          # (depends on flutter_otel_api + Flutter)
-    flutter_otel_exporter_otlp_http/    # OTLP/HTTP JSON log exporter
+    flutter_otel_exporter_otlp_http/    # OTLP/HTTP JSON log + span exporters
                                          # (pure Dart, depends on flutter_otel_api + http)
     flutter_otel/                       # umbrella package — what apps depend on
-    flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation
+    flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
+                                         # including CLIENT spans + traceparent
+                                         # propagation when a Tracer is given
 ```
 
 Three packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`, and
@@ -110,23 +119,73 @@ Future<void> main() async {
 
   otel.getLogger().info('app started', attributes: {'cold_start': true});
 
+  // A log emitted while this span is active is automatically stamped with
+  // its traceId/spanId — no manual correlation needed.
+  await otel.getTracer().startActiveSpan('load-config', (span) async {
+    otel.getLogger().info('config loaded');
+  });
+
   runApp(const MyApp());
 }
 ```
 
-`enabled: false` swaps in a no-op exporter, so logging calls are always safe
-to leave in place across debug/release builds without producing network
-traffic.
+`enabled: false` swaps in no-op exporters for both signals, so logging and
+tracing calls are always safe to leave in place across debug/release builds
+without producing network traffic.
 
 ### Configuration naming
 
-`OTelSdkConfig`'s `otlpEndpoint` / `otlpLogsEndpoint` / `otlpHeaders` fields
-mirror the standard OpenTelemetry environment variable names
-(`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`,
+`OTelSdkConfig`'s `otlpEndpoint` / `otlpLogsEndpoint` / `otlpTracesEndpoint`
+/ `otlpHeaders` fields mirror the standard OpenTelemetry environment
+variable names (`OTEL_EXPORTER_OTLP_ENDPOINT`,
+`OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`,
 `OTEL_EXPORTER_OTLP_HEADERS`) in behavior: `otlpEndpoint` is a general base
-endpoint that the logs exporter resolves `/v1/logs` against, while
-`otlpLogsEndpoint` — when set — is used verbatim as a signal-specific
-override, exactly like the env vars' base-vs-per-signal precedence.
+endpoint that the logs exporter resolves `/v1/logs` against and the traces
+exporter resolves `/v1/traces` against, while `otlpLogsEndpoint` /
+`otlpTracesEndpoint` — when set — are used verbatim as signal-specific
+overrides, exactly like the env vars' base-vs-per-signal precedence. Batch
+tuning (`maxQueueSize`, `maxExportBatchSize`, `scheduledDelay`) and
+`httpClient` are shared across both signals rather than duplicated
+per-signal — a deliberate simplification for now.
+
+### Traces and correlation
+
+`Tracer.startActiveSpan` starts a span, makes it the ambient
+"current span" for the duration of the callback (propagated across `await`
+gaps, including through nested spans), ends it when the callback returns
+(recording the exception and setting an error status if it throws), and
+returns the callback's result:
+
+```dart
+final result = await otel.getTracer().startActiveSpan('fetch-widgets', (span) async {
+  span.setAttribute('widget.count', widgets.length);
+  return widgets;
+});
+```
+
+Any `Logger.emit`/`info`/`warn`/... call made anywhere underneath that
+callback — directly or several layers of `await` down — automatically picks
+up the active span's `traceId`/`spanId`, unless the caller already set them
+explicitly. This is what makes trace-to-log correlation "automatic": no log
+call site needs to know about tracing at all.
+
+For outgoing HTTP requests, `flutter_otel_instrumentation_dio`'s
+`DioOTelInterceptor` accepts an optional `tracer:` parameter that starts a
+CLIENT span per request and injects a W3C `traceparent` header, joining the
+request into whatever trace is active when it's made — see that package's
+README for details.
+
+### Not yet implemented
+
+- **Sampling** — every span is always recorded and exported; there is no
+  head- or tail-based sampling yet.
+- **An `onStart` `SpanProcessor` hook** — only `onEnd` exists, since nothing
+  in this SDK needs to observe a span before it finishes.
+- **Metrics** — the core has a `Meter`/`MeterProvider` stub (see
+  `flutter_otel_api`), but no metrics pipeline exists yet.
+- **`tracestate` propagation** — `formatTraceparent`/`parseTraceparent`
+  handle the W3C `traceparent` header only; this SDK has no vendor-specific
+  state to carry in `tracestate` and doesn't round-trip anyone else's.
 
 ## Development
 

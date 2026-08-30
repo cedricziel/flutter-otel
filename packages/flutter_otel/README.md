@@ -69,12 +69,20 @@ Future<void> main() async {
   );
 
   otel.getLogger().info('app started');
+
+  // A log emitted while this span is active is automatically stamped with
+  // its traceId/spanId — no manual correlation needed.
+  await otel.getTracer().startActiveSpan('load-config', (span) async {
+    otel.getLogger().info('config loaded');
+  });
+
   runApp(const MyApp());
 }
 ```
 
-See the [root README](../../README.md) for the full quick-start and the
-`OTEL_EXPORTER_OTLP_*` configuration naming convention this SDK mirrors.
+See the [root README](../../README.md) for the full quick-start, the
+traces/correlation walkthrough, and the `OTEL_EXPORTER_OTLP_*`
+configuration naming convention this SDK mirrors.
 
 ## Testing
 

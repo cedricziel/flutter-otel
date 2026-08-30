@@ -2,10 +2,13 @@ import 'package:flutter_otel_api/flutter_otel_api.dart';
 
 /// Concrete [LoggerProvider] backed by a single [LogRecordProcessor].
 ///
-/// When [sessionManager] is non-null, every [Logger] vended by this
-/// provider automatically merges a `session.id` attribute (read from
-/// [SessionManager.sessionId]) onto each [LogRecord] it emits, and calls
-/// [SessionManager.touch] on every emit.
+/// Every [Logger] vended by this provider automatically stamps
+/// `traceId`/`spanId` from [Span.current] onto each [LogRecord] it emits,
+/// whenever a span is active and neither ID was already set explicitly —
+/// this is the trace-to-log correlation mechanism. When [sessionManager] is
+/// also non-null, a `session.id` attribute (read from
+/// [SessionManager.sessionId]) is merged in too, and
+/// [SessionManager.touch] is called on every emit.
 class SdkLoggerProvider implements LoggerProvider {
   SdkLoggerProvider({
     required this.resource,
@@ -56,6 +59,13 @@ class _SdkLogger extends Logger {
   @override
   void emit(LogRecord record) {
     var toEmit = record.withScope(scopeName, scopeVersion);
+    final span = Span.current;
+    if (span != null && span.spanContext.isValid) {
+      toEmit = toEmit.withTraceCorrelation(
+        span.spanContext.traceId,
+        span.spanContext.spanId,
+      );
+    }
     final manager = sessionManager;
     if (manager != null) {
       manager.touch();

@@ -101,6 +101,43 @@ void main() {
     });
   });
 
+  group('LogRecord.withTraceCorrelation', () {
+    test('fills in traceId/spanId when neither is already set', () {
+      final original = LogRecord(body: 'hello');
+      final correlated = original.withTraceCorrelation('trace-1', 'span-1');
+
+      expect(correlated.traceId, 'trace-1');
+      expect(correlated.spanId, 'span-1');
+    });
+
+    test('does not overwrite an explicit traceId/spanId', () {
+      final original = LogRecord(
+        body: 'hello',
+        traceId: 'explicit-trace',
+        spanId: 'explicit-span',
+      );
+      final correlated = original.withTraceCorrelation('trace-1', 'span-1');
+
+      expect(correlated.traceId, 'explicit-trace');
+      expect(correlated.spanId, 'explicit-span');
+    });
+
+    test('preserves everything else about the record', () {
+      final original = LogRecord(
+        body: 'hello',
+        attributes: {'a': 1},
+        scopeName: 'my.scope',
+        scopeVersion: '1.0.0',
+      );
+      final correlated = original.withTraceCorrelation('trace-1', 'span-1');
+
+      expect(correlated.body, 'hello');
+      expect(correlated.attributes, {'a': 1});
+      expect(correlated.scopeName, 'my.scope');
+      expect(correlated.scopeVersion, '1.0.0');
+    });
+  });
+
   group('LogRecord.withScope', () {
     test('returns a copy stamped with the given scope', () {
       final original = LogRecord(body: 'hello', attributes: {'a': 1});
