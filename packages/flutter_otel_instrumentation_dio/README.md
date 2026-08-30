@@ -38,10 +38,35 @@ depends on it — apps that use Dio add it directly alongside `flutter_otel`.
 
 ```yaml
 dependencies:
+  flutter_otel: # for OTelSdk, used in the example below
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main # pin to a commit or tag in real usage
+      path: packages/flutter_otel
   flutter_otel_instrumentation_dio:
     git:
       url: https://github.com/cedricziel/flutter-otel
+      ref: main
       path: packages/flutter_otel_instrumentation_dio
+
+# These transitive workspace packages are unpublished, so pub can't resolve
+# them on its own — pin them here too, at the same ref, or pub get will fail.
+dependency_overrides:
+  flutter_otel_api:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_api
+  flutter_otel_sdk:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_sdk
+  flutter_otel_exporter_otlp_http:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_exporter_otlp_http
 ```
 
 ## Usage example

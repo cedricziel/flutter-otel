@@ -12,6 +12,17 @@ class OTelResource {
     String? deploymentEnvironment,
     Map<String, Object?> attributes = const {},
   }) {
+    if (attributes.containsKey('service.name')) {
+      final override = attributes['service.name'];
+      if (override is! String) {
+        throw ArgumentError.value(
+          override,
+          'attributes["service.name"]',
+          'If attributes contains a "service.name" key, its value must be '
+              'a non-null String.',
+        );
+      }
+    }
     final merged = <String, Object?>{
       'service.name': serviceName,
       if (serviceVersion != null) 'service.version': serviceVersion,

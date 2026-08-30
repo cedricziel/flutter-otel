@@ -12,12 +12,23 @@ library;
 /// - [int] -> `intValue` (as a string, per the protobuf JSON mapping for
 ///   64-bit integers)
 /// - [double] -> `doubleValue`
+/// - `null` -> an empty `AnyValue` (i.e. `{}`, with no field set), per the
+///   OTel attribute-type mapping for nil values
+/// - [List] -> `arrayValue.values`, with each element recursively encoded
 /// - anything else -> `stringValue` via `toString()`
 Map<String, Object?> encodeAnyValue(Object? value) {
+  if (value == null) return {};
   if (value is String) return {'stringValue': value};
   if (value is bool) return {'boolValue': value};
   if (value is int) return {'intValue': value.toString()};
   if (value is double) return {'doubleValue': value};
+  if (value is List) {
+    return {
+      'arrayValue': {
+        'values': value.map(encodeAnyValue).toList(growable: false),
+      },
+    };
+  }
   return {'stringValue': value.toString()};
 }
 

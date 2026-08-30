@@ -14,7 +14,7 @@ platform-specific — no platform channels, just `http`, `uuid`, and
 
 ## Position in the dependency graph
 
-```
+```text
 flutter_otel_api ──┬──────────────────────────────┐
                     │                              │
 flutter_otel_exporter_otlp_http ──> flutter_otel_sdk ──> flutter_otel
@@ -31,7 +31,28 @@ dependencies:
   flutter_otel:
     git:
       url: https://github.com/cedricziel/flutter-otel
+      ref: main # pin to a commit or tag in real usage
       path: packages/flutter_otel
+
+# flutter_otel's own dependencies on its sibling packages are unpublished,
+# so pub can't resolve them on its own — pin them here too, at the same
+# ref, or pub get will fail.
+dependency_overrides:
+  flutter_otel_api:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_api
+  flutter_otel_sdk:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_sdk
+  flutter_otel_exporter_otlp_http:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_exporter_otlp_http
 ```
 
 ## Usage example

@@ -12,6 +12,11 @@ class _RecordingLogger extends Logger {
   void emit(LogRecord record) => emitted.add(record);
 }
 
+class _ThrowingLogger extends Logger {
+  @override
+  void emit(LogRecord record) => throw StateError('boom: a misbehaving logger');
+}
+
 void main() {
   late _RecordingLogger logger;
   late DateTime now;
@@ -66,6 +71,60 @@ void main() {
 
       expect(options.extra['flutter_otel.start_time'], isA<DateTime>());
     });
+
+    test(
+        'strips user-info and query parameters from the logged URL by '
+        'default', () {
+      final interceptor = buildInterceptor();
+      final options = RequestOptions(
+        path: '/widgets',
+        baseUrl: 'https://user:pass@api.example.com',
+        method: 'GET',
+        queryParameters: {'access_token': 'super-secret'},
+      );
+      final handler = RequestInterceptorHandler();
+
+      interceptor.onRequest(options, handler);
+
+      final record = logger.emitted.single;
+      final loggedUrl = record.attributes['http.url'] as String;
+      expect(loggedUrl, isNot(contains('super-secret')));
+      expect(loggedUrl, isNot(contains('user:pass')));
+      expect(loggedUrl, isNot(contains('access_token')));
+      expect(loggedUrl, 'https://api.example.com/widgets');
+    });
+
+    test('preserves user-info and query parameters when opted in', () {
+      var current = now;
+      final interceptor = DioOTelInterceptor(
+        logger,
+        clock: () => current,
+        includeQueryParameters: true,
+      );
+      final options = RequestOptions(
+        path: '/widgets',
+        baseUrl: 'https://user:pass@api.example.com',
+        method: 'GET',
+        queryParameters: {'access_token': 'super-secret'},
+      );
+      final handler = RequestInterceptorHandler();
+
+      interceptor.onRequest(options, handler);
+
+      final record = logger.emitted.single;
+      final loggedUrl = record.attributes['http.url'] as String;
+      expect(loggedUrl, contains('super-secret'));
+      expect(loggedUrl, contains('access_token'));
+    });
+
+    test('still forwards the request when the injected Logger throws', () {
+      final interceptor = DioOTelInterceptor(_ThrowingLogger());
+      final options = buildRequestOptions();
+      final handler = RequestInterceptorHandler();
+
+      expect(() => interceptor.onRequest(options, handler), returnsNormally);
+      expect(handler.isCompleted, isTrue);
+    });
   });
 
   group('DioOTelInterceptor.onResponse', () {
@@ -108,6 +167,22 @@ void main() {
 
       final record = logger.emitted.single;
       expect(record.attributes.containsKey('duration_ms'), isFalse);
+    });
+
+    test('still forwards the response when the injected Logger throws', () {
+      final interceptor = DioOTelInterceptor(_ThrowingLogger());
+      final options = buildRequestOptions();
+      final response = Response<dynamic>(
+        requestOptions: options,
+        statusCode: 200,
+      );
+      final handler = ResponseInterceptorHandler();
+
+      expect(
+        () => interceptor.onResponse(response, handler),
+        returnsNormally,
+      );
+      expect(handler.isCompleted, isTrue);
     });
   });
 
@@ -158,6 +233,41 @@ void main() {
       final errorRecord =
           logger.emitted.firstWhere((r) => r.severity == LogSeverity.error);
       expect(errorRecord.attributes['http.status_code'], 503);
+    });
+
+    test(
+        'strips user-info and query parameters from the logged URL by '
+        'default', () async {
+      final interceptor = buildInterceptor();
+      final dio = Dio(BaseOptions(baseUrl: 'https://user:pass@api.example.com'))
+        ..interceptors.add(interceptor)
+        ..httpClientAdapter = _FakeAdapter(statusCode: 503);
+
+      await expectLater(
+        dio.get<void>('/widgets', queryParameters: {
+          'access_token': 'super-secret',
+        }),
+        throwsA(isA<DioException>()),
+      );
+
+      final errorRecord =
+          logger.emitted.firstWhere((r) => r.severity == LogSeverity.error);
+      final loggedUrl = errorRecord.attributes['http.url'] as String;
+      expect(loggedUrl, isNot(contains('super-secret')));
+      expect(loggedUrl, isNot(contains('user:pass')));
+    });
+
+    test('still forwards the error when the injected Logger throws', () async {
+      final interceptor = DioOTelInterceptor(_ThrowingLogger());
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
+        ..interceptors.add(interceptor)
+        ..httpClientAdapter =
+            _FakeAdapter(throwError: const SocketExceptionStub());
+
+      await expectLater(
+        dio.get<void>('/widgets'),
+        throwsA(isA<DioException>()),
+      );
     });
   });
 }

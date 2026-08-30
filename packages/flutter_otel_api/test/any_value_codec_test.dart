@@ -21,12 +21,46 @@ void main() {
     });
 
     test('falls back to stringValue via toString for anything else', () {
-      final result = encodeAnyValue(<int>[1, 2, 3]);
-      expect(result, {'stringValue': '[1, 2, 3]'});
+      final result = encodeAnyValue(Object());
+      expect(result, {'stringValue': result['stringValue']});
     });
 
-    test('falls back to stringValue for null', () {
-      expect(encodeAnyValue(null), {'stringValue': 'null'});
+    test('encodes null as an empty AnyValue', () {
+      expect(encodeAnyValue(null), <String, Object?>{});
+    });
+
+    test('encodes a List as arrayValue.values, recursively', () {
+      final result = encodeAnyValue(<Object?>[1, 'two', true, null]);
+      expect(result, {
+        'arrayValue': {
+          'values': [
+            {'intValue': '1'},
+            {'stringValue': 'two'},
+            {'boolValue': true},
+            <String, Object?>{},
+          ],
+        },
+      });
+    });
+
+    test('encodes nested Lists recursively', () {
+      final result = encodeAnyValue(<Object?>[
+        <Object?>[1, 2],
+      ]);
+      expect(result, {
+        'arrayValue': {
+          'values': [
+            {
+              'arrayValue': {
+                'values': [
+                  {'intValue': '1'},
+                  {'intValue': '2'},
+                ],
+              },
+            },
+          ],
+        },
+      });
     });
   });
 
@@ -50,6 +84,32 @@ void main() {
 
     test('returns an empty list for empty attributes', () {
       expect(encodeAttributes(const {}), isEmpty);
+    });
+
+    test('encodes a null attribute as an empty AnyValue', () {
+      final encoded = encodeAttributes({'nullable.attr': null});
+      expect(encoded, [
+        {'key': 'nullable.attr', 'value': <String, Object?>{}},
+      ]);
+    });
+
+    test('encodes a list attribute as arrayValue.values', () {
+      final encoded = encodeAttributes({
+        'list.attr': <Object?>['a', 'b'],
+      });
+      expect(encoded, [
+        {
+          'key': 'list.attr',
+          'value': {
+            'arrayValue': {
+              'values': [
+                {'stringValue': 'a'},
+                {'stringValue': 'b'},
+              ],
+            },
+          },
+        },
+      ]);
     });
   });
 }

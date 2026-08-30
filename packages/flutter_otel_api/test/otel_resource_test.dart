@@ -48,5 +48,25 @@ void main() {
       final resource = OTelResource(serviceName: 'trueapp');
       expect(() => resource.attributes['x'] = 'y', throwsUnsupportedError);
     });
+
+    test('throws ArgumentError when service.name override is null', () {
+      expect(
+        () => OTelResource(
+          serviceName: 'trueapp',
+          attributes: {'service.name': null},
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws ArgumentError when service.name override is not a String', () {
+      expect(
+        () => OTelResource(
+          serviceName: 'trueapp',
+          attributes: {'service.name': 42},
+        ),
+        throwsArgumentError,
+      );
+    });
   });
 }

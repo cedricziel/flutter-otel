@@ -42,7 +42,7 @@ flutter-otel/
     flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation
 ```
 
-Two packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`, and
+Three packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`, and
 `flutter_otel_instrumentation_dio`) are pure Dart with no Flutter dependency,
 so they also run on any Dart target (server, CLI, web) — that's the
 "multiplatform" half of the design. `flutter_otel_sdk` and the `flutter_otel`
@@ -68,7 +68,28 @@ dependencies:
   flutter_otel:
     git:
       url: https://github.com/cedricziel/flutter-otel
+      ref: main # pin to a commit or tag in real usage
       path: packages/flutter_otel
+
+# flutter_otel's own dependencies on its sibling packages are unpublished,
+# so pub can't resolve them on its own — pin them here too, at the same
+# ref, or pub get will fail.
+dependency_overrides:
+  flutter_otel_api:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_api
+  flutter_otel_sdk:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_sdk
+  flutter_otel_exporter_otlp_http:
+    git:
+      url: https://github.com/cedricziel/flutter-otel
+      ref: main
+      path: packages/flutter_otel_exporter_otlp_http
 ```
 
 ```dart

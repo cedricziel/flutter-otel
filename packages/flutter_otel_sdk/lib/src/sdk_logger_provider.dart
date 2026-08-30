@@ -17,11 +17,11 @@ class SdkLoggerProvider implements LoggerProvider {
   final LogRecordProcessor processor;
   final SessionManager? sessionManager;
 
-  final Map<String, Logger> _loggers = {};
+  final Map<(String, String?), Logger> _loggers = {};
 
   @override
   Logger getLogger({String name = 'flutter_otel', String? version}) {
-    final key = '$name@${version ?? ''}';
+    final key = (name, version);
     return _loggers.putIfAbsent(
       key,
       () => _SdkLogger(

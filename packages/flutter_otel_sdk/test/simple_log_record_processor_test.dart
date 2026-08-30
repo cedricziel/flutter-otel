@@ -58,5 +58,22 @@ void main() {
       expect(exporter.exportedBatches, hasLength(1));
       expect(exporter.shutdownCallCount, 1);
     });
+
+    test('onEmit after shutdown is a no-op and never touches the exporter',
+        () async {
+      processor.onEmit(LogRecord(body: 'one'));
+      await processor.shutdown();
+
+      expect(exporter.exportedBatches, hasLength(1));
+
+      processor.onEmit(LogRecord(body: 'two'));
+      await Future<void>.delayed(Duration.zero);
+
+      // Still just the one record exported before shutdown; the post-
+      // shutdown emit was dropped rather than exported through a released
+      // exporter.
+      expect(exporter.exportedBatches, hasLength(1));
+      expect(exporter.allRecords.map((r) => r.body), ['one']);
+    });
   });
 }

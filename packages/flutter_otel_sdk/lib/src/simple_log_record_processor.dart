@@ -13,9 +13,11 @@ class SimpleLogRecordProcessor implements LogRecordProcessor {
   final OTelResource resource;
 
   final List<Future<void>> _pending = [];
+  bool _shutdown = false;
 
   @override
   void onEmit(LogRecord record) {
+    if (_shutdown) return;
     final future = _exportSafely([record]);
     _pending.add(future);
     unawaited(future.whenComplete(() => _pending.remove(future)));
@@ -37,6 +39,7 @@ class SimpleLogRecordProcessor implements LogRecordProcessor {
 
   @override
   Future<void> shutdown() async {
+    _shutdown = true;
     await forceFlush();
     await exporter.shutdown();
   }

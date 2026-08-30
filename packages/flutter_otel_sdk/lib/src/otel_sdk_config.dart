@@ -16,7 +16,29 @@ class OTelSdkConfig {
     this.maxQueueSize = 2048,
     this.httpClient,
     this.logExporter,
-  });
+  }) {
+    if (maxQueueSize <= 0) {
+      throw ArgumentError.value(
+        maxQueueSize,
+        'maxQueueSize',
+        'Must be greater than 0.',
+      );
+    }
+    if (maxExportBatchSize <= 0) {
+      throw ArgumentError.value(
+        maxExportBatchSize,
+        'maxExportBatchSize',
+        'Must be greater than 0.',
+      );
+    }
+    if (scheduledDelay <= Duration.zero) {
+      throw ArgumentError.value(
+        scheduledDelay,
+        'scheduledDelay',
+        'Must be greater than Duration.zero.',
+      );
+    }
+  }
 
   /// Describes the app/service producing telemetry.
   final OTelResource resource;

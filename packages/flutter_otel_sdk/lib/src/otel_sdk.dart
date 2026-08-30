@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_otel_api/flutter_otel_api.dart';
 import 'package:flutter_otel_exporter_otlp_http/flutter_otel_exporter_otlp_http.dart';
 import 'package:http/http.dart' as http;
@@ -52,6 +53,14 @@ class OTelSdk {
 
     SessionManager? sessionManager;
     if (config.sessionTrackingEnabled) {
+      // DefaultSessionManager registers a WidgetsBindingObserver via
+      // WidgetsBinding.instance, which throws if no binding has been
+      // initialized yet. A consumer calling OTelSdk.initialize(...) as the
+      // very first line of main() (before runApp/ensureInitialized) is
+      // reasonable and common, so make sure a binding exists here.
+      // ensureInitialized() is idempotent and safe to call multiple times,
+      // even if the consumer already called it themselves.
+      WidgetsFlutterBinding.ensureInitialized();
       sessionManager =
           DefaultSessionManager(idleTimeout: config.sessionTimeout);
     }

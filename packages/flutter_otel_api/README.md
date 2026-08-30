@@ -13,7 +13,7 @@ code), not just this workspace's Flutter-based packages.
 This is the foundation package. Nothing in the workspace depends on
 anything *but* this package plus their own extra needs:
 
-```
+```text
 flutter_otel_api  <── flutter_otel_sdk
                   <── flutter_otel_exporter_otlp_http
                   <── flutter_otel_instrumentation_dio

@@ -122,6 +122,21 @@ void main() {
       expect(identical(a, c), isFalse);
     });
 
+    test(
+        'does not collide for name/version pairs that would collide under a '
+        'delimiter-joined string key', () {
+      final processor = SimpleLogRecordProcessor(exporter, resource);
+      final provider =
+          SdkLoggerProvider(resource: resource, processor: processor);
+
+      // Both of these would join to the same string under a naive
+      // '$name:$version' (or '$name@$version') cache key.
+      final a = provider.getLogger(name: 'a:b', version: 'c');
+      final b = provider.getLogger(name: 'a', version: 'b:c');
+
+      expect(identical(a, b), isFalse);
+    });
+
     test('forceFlush and shutdown delegate to the processor', () async {
       final processor = SimpleLogRecordProcessor(exporter, resource);
       final provider =
