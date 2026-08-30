@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_otel_api/flutter_otel_api.dart';
 
 /// A Dio [Interceptor] that emits a [LogRecord] (via an injected [Logger])
-/// for every outgoing request, successful response, and error.
+/// for every outgoing request, successful response, and error, and
+/// (optionally, when a [Tracer] is supplied) produces a real CLIENT [Span]
+/// per request with W3C `traceparent` propagation to the server.
 ///
 /// The app is responsible for obtaining the [Logger] (typically via
 /// `OTelSdk.instance.getLogger(name: 'flutter_otel_instrumentation_dio')`)
@@ -12,19 +14,47 @@ import 'package:flutter_otel_api/flutter_otel_api.dart';
 /// dio.interceptors.add(DioOTelInterceptor(otel.getLogger()));
 /// ```
 ///
+/// Passing a [Tracer] as well additionally starts a span per request and
+/// injects it as a `traceparent` header, joining this request into
+/// whatever trace/span is active when the request is made:
+///
+/// ```dart
+/// dio.interceptors.add(
+///   DioOTelInterceptor(otel.getLogger(), tracer: otel.getTracer()),
+/// );
+/// ```
+///
 /// This establishes the `flutter_otel_instrumentation_<target>` pattern:
 /// future packages (navigation, go_router, ...) follow the same shape of
-/// "take a [Logger], emit records with semantic-convention-ish attributes".
+/// "take a [Logger] (and optionally a [Tracer]), emit records/spans with
+/// semantic-convention-ish attributes".
 class DioOTelInterceptor extends Interceptor {
   DioOTelInterceptor(
     this._logger, {
+    Tracer? tracer,
     DateTime Function()? clock,
     this.includeQueryParameters = false,
-  }) : _clock = clock ?? DateTime.now;
+  })  : _tracer = tracer,
+        _clock = clock ?? DateTime.now,
+        _spanKey = 'flutter_otel.span.${_instanceCounter++}';
 
   static const String _startTimeKey = 'flutter_otel.start_time';
 
+  /// Monotonically increasing counter used to derive a unique [_spanKey]
+  /// per instance ([RequestOptions.extra] keys must be [String]s, so a
+  /// bare identity-based [Object] key can't be used directly).
+  static int _instanceCounter = 0;
+
+  /// Instance-specific key used to stash the in-flight span in
+  /// [RequestOptions.extra]. Must not be a shared static/const key: if two
+  /// [DioOTelInterceptor] instances are attached to the same [Dio] client,
+  /// a shared key would let the second interceptor's span overwrite the
+  /// first's in `extra`, so the first span would never be retrieved,
+  /// `end()`'d, or exported.
+  final String _spanKey;
+
   final Logger _logger;
+  final Tracer? _tracer;
   final DateTime Function() _clock;
 
   /// Whether to include user-info and query parameters when logging request
@@ -52,6 +82,20 @@ class DioOTelInterceptor extends Interceptor {
         },
       );
     });
+    _safeTrace(() {
+      final tracer = _tracer;
+      if (tracer == null) return;
+      final span = tracer.startSpan(
+        'HTTP ${options.method}',
+        kind: SpanKind.client,
+        attributes: {
+          'http.method': options.method,
+          'http.url': _sanitizeUrl(options.uri),
+        },
+      );
+      options.extra[_spanKey] = span;
+      options.headers['traceparent'] = formatTraceparent(span.spanContext);
+    });
     handler.next(options);
   }
 
@@ -72,6 +116,22 @@ class DioOTelInterceptor extends Interceptor {
           if (durationMs != null) 'duration_ms': durationMs,
         },
       );
+    });
+    _safeTrace(() {
+      final span = _takeSpan(response.requestOptions);
+      if (span == null) return;
+      final statusCode = response.statusCode;
+      if (statusCode != null) {
+        span.setAttribute('http.status_code', statusCode);
+      }
+      // A CLIENT span must be marked as an error for 4xx/5xx responses per
+      // OTel HTTP semantic conventions, even when Dio's `validateStatus` is
+      // configured to treat such a status as non-throwing and route it here
+      // (rather than to onError).
+      final isError =
+          statusCode != null && statusCode >= 400 && statusCode < 600;
+      span.setStatus(isError ? StatusCode.error : StatusCode.ok);
+      span.end();
     });
     handler.next(response);
   }
@@ -97,8 +157,24 @@ class DioOTelInterceptor extends Interceptor {
         },
       );
     });
+    _safeTrace(() {
+      final span = _takeSpan(err.requestOptions);
+      if (span == null) return;
+      if (err.response?.statusCode != null) {
+        span.setAttribute('http.status_code', err.response!.statusCode);
+      }
+      span.recordException(err.error ?? err, stackTrace: err.stackTrace);
+      span.setStatus(StatusCode.error, description: err.message);
+      span.end();
+    });
     handler.next(err);
   }
+
+  /// Removes and returns the [Span] stashed on [options] by [onRequest], if
+  /// any (e.g. `null` when no [_tracer] was supplied, or this
+  /// response/error is for a request this interceptor never saw).
+  Span? _takeSpan(RequestOptions options) =>
+      options.extra.remove(_spanKey) as Span?;
 
   int? _durationMsSince(RequestOptions options) {
     final start = options.extra[_startTimeKey];
@@ -133,6 +209,20 @@ class DioOTelInterceptor extends Interceptor {
       log();
     } catch (_) {
       // Intentionally ignored: a throwing Logger must not break networking.
+    }
+  }
+
+  /// Runs [trace], swallowing any exception it throws.
+  ///
+  /// A misbehaving injected [Tracer]/[Span] must never be able to prevent
+  /// the Dio handler chain (`handler.next`/`resolve`/`reject`) from being
+  /// invoked, exactly like [_safeLog] for the injected [Logger].
+  void _safeTrace(void Function() trace) {
+    try {
+      trace();
+    } catch (_) {
+      // Intentionally ignored: a throwing Tracer/Span must not break
+      // networking.
     }
   }
 }

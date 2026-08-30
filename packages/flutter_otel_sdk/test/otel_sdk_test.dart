@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'support/fake_log_record_exporter.dart';
+import 'support/fake_span_exporter.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +65,75 @@ void main() {
       await sdk.forceFlush();
 
       expect(exporter.allRecords.single.scopeName, 'my.logger');
+    });
+  });
+
+  group('OTelSdk.getTracer passthrough', () {
+    test('delegates to tracerProvider.getTracer', () async {
+      final spanExporter = FakeSpanExporter();
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          logExporter: FakeLogRecordExporter(),
+          spanExporter: spanExporter,
+        ),
+      );
+
+      sdk.getTracer(name: 'my.tracer').startSpan('op').end();
+      await sdk.forceFlush();
+
+      expect(spanExporter.allSpans.single.scopeName, 'my.tracer');
+    });
+  });
+
+  group('OTelSdk trace-to-log correlation', () {
+    test(
+        'logger.info(...) called inside tracer.startActiveSpan(...) '
+        'produces a LogRecord whose traceId/spanId match the active span',
+        () async {
+      final logExporter = FakeLogRecordExporter();
+      final spanExporter = FakeSpanExporter();
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          logExporter: logExporter,
+          spanExporter: spanExporter,
+        ),
+      );
+
+      SpanContext? activeContext;
+      await sdk.getTracer().startActiveSpan('do-work', (span) async {
+        activeContext = span.spanContext;
+        sdk.getLogger().info('inside a span');
+      });
+      await sdk.forceFlush();
+
+      final record = logExporter.allRecords.single;
+      expect(record.traceId, isNotNull);
+      expect(record.spanId, isNotNull);
+      expect(record.traceId, activeContext!.traceId);
+      expect(record.spanId, activeContext!.spanId);
+
+      final span = spanExporter.allSpans.single;
+      expect(span.spanContext, activeContext);
+    });
+
+    test('logs emitted outside any span carry no traceId/spanId', () async {
+      final logExporter = FakeLogRecordExporter();
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          logExporter: logExporter,
+          spanExporter: FakeSpanExporter(),
+        ),
+      );
+
+      sdk.getLogger().info('no span here');
+      await sdk.forceFlush();
+
+      final record = logExporter.allRecords.single;
+      expect(record.traceId, isNull);
+      expect(record.spanId, isNull);
     });
   });
 
@@ -134,6 +204,30 @@ void main() {
 
       expect(callCount, 0);
     });
+
+    test('makes zero HTTP calls for traces either, even with spans started',
+        () async {
+      var callCount = 0;
+      final client = MockClient((request) async {
+        callCount++;
+        return http.Response('ok', 200);
+      });
+
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          enabled: false,
+          otlpEndpoint: Uri.parse('https://collector.example.com'),
+          httpClient: client,
+        ),
+      );
+
+      sdk.getTracer().startSpan('op').end();
+      await sdk.getTracer().startActiveSpan('op2', (span) async {});
+      await sdk.forceFlush();
+
+      expect(callCount, 0);
+    });
   });
 
   group('OTelSdk OTLP endpoint resolution', () {
@@ -195,6 +289,59 @@ void main() {
       expect(callCount, 0);
       expect(fake.allRecords, hasLength(1));
     });
+
+    test(
+        'otlpEndpoint is used to build a real OTLP span exporter that posts '
+        'to /v1/traces', () async {
+      Uri? capturedUri;
+      final client = MockClient((request) async {
+        capturedUri = request.url;
+        return http.Response('ok', 200);
+      });
+
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          otlpEndpoint: Uri.parse('https://collector.example.com'),
+          httpClient: client,
+          logExporter: FakeLogRecordExporter(),
+          scheduledDelay: const Duration(milliseconds: 10),
+        ),
+      );
+
+      sdk.getTracer().startSpan('op').end();
+      await sdk.forceFlush();
+
+      expect(
+        capturedUri,
+        Uri.parse('https://collector.example.com/v1/traces'),
+      );
+    });
+
+    test('spanExporter override bypasses otlpEndpoint entirely', () async {
+      var callCount = 0;
+      final client = MockClient((request) async {
+        callCount++;
+        return http.Response('ok', 200);
+      });
+      final fake = FakeSpanExporter();
+
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          otlpEndpoint: Uri.parse('https://collector.example.com'),
+          httpClient: client,
+          logExporter: FakeLogRecordExporter(),
+          spanExporter: fake,
+        ),
+      );
+
+      sdk.getTracer().startSpan('op').end();
+      await sdk.forceFlush();
+
+      expect(callCount, 0);
+      expect(fake.allSpans, hasLength(1));
+    });
   });
 
   group('OTelSdk.shutdown', () {
@@ -214,6 +361,23 @@ void main() {
 
       expect(exporter.allRecords, hasLength(1));
       expect(exporter.shutdownCallCount, 1);
+    });
+
+    test('also flushes and shuts down the span pipeline', () async {
+      final spanExporter = FakeSpanExporter();
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          logExporter: FakeLogRecordExporter(),
+          spanExporter: spanExporter,
+        ),
+      );
+
+      sdk.getTracer().startSpan('op').end();
+      await sdk.shutdown();
+
+      expect(spanExporter.allSpans, hasLength(1));
+      expect(spanExporter.shutdownCallCount, 1);
     });
   });
 }

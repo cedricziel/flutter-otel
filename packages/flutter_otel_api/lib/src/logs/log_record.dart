@@ -74,6 +74,23 @@ class LogRecord {
         scopeVersion: scopeVersion,
       );
 
+  /// Returns a copy of this record with [traceId]/[spanId] filled in for
+  /// whichever of the two isn't already set. An explicit value the caller
+  /// passed when constructing this record always wins — this only fills
+  /// gaps, e.g. for automatic trace-to-log correlation when a log is
+  /// emitted while a span is active.
+  LogRecord withTraceCorrelation(String traceId, String spanId) => LogRecord(
+        body: body,
+        severity: severity,
+        timestamp: timestamp,
+        observedTimestamp: observedTimestamp,
+        attributes: attributes,
+        traceId: this.traceId ?? traceId,
+        spanId: this.spanId ?? spanId,
+        scopeName: scopeName,
+        scopeVersion: scopeVersion,
+      );
+
   /// Returns a copy of this record stamped with the given instrumentation
   /// scope name/version.
   LogRecord withScope(String name, String? version) => LogRecord(

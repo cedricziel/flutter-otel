@@ -4,15 +4,16 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_otel_api/flutter_otel_api.dart';
 
-/// A [LogRecordProcessor] that buffers records and exports them in batches,
-/// either when [maxExportBatchSize] is reached or every [scheduledDelay] on
-/// a periodic timer — whichever comes first. Buffered records beyond
-/// [maxQueueSize] are dropped (oldest first) to bound memory use.
+/// A [SpanProcessor] that buffers finished spans and exports them in
+/// batches, either when [maxExportBatchSize] is reached or every
+/// [scheduledDelay] on a periodic timer — whichever comes first. Buffered
+/// spans beyond [maxQueueSize] are dropped (oldest first) to bound memory
+/// use.
 ///
 /// Export failures are swallowed and reported via [debugPrint]; they never
 /// propagate into application code.
-class BatchLogRecordProcessor implements LogRecordProcessor {
-  BatchLogRecordProcessor(
+class BatchSpanProcessor implements SpanProcessor {
+  BatchSpanProcessor(
     this.exporter,
     this.resource, {
     this.maxQueueSize = 2048,
@@ -43,29 +44,29 @@ class BatchLogRecordProcessor implements LogRecordProcessor {
     _timer = Timer.periodic(scheduledDelay, (_) => unawaited(_flushBatches()));
   }
 
-  final LogRecordExporter exporter;
+  final SpanExporter exporter;
   final OTelResource resource;
   final int maxQueueSize;
   final int maxExportBatchSize;
   final Duration scheduledDelay;
 
-  final Queue<LogRecord> _queue = Queue<LogRecord>();
+  final Queue<SpanData> _queue = Queue<SpanData>();
   Timer? _timer;
   bool _shutdown = false;
   Future<void>? _flushInProgress;
 
-  /// The number of records currently buffered, awaiting export. Exposed for
+  /// The number of spans currently buffered, awaiting export. Exposed for
   /// tests.
   @visibleForTesting
   int get queueLength => _queue.length;
 
   @override
-  void onEmit(LogRecord record) {
+  void onEnd(SpanData span) {
     if (_shutdown) return;
     if (_queue.length >= maxQueueSize) {
       _queue.removeFirst();
     }
-    _queue.add(record);
+    _queue.add(span);
     if (_queue.length >= maxExportBatchSize) {
       unawaited(_flushBatches());
     }
@@ -84,17 +85,17 @@ class BatchLogRecordProcessor implements LogRecordProcessor {
       final batchSize = _queue.length < maxExportBatchSize
           ? _queue.length
           : maxExportBatchSize;
-      final batch = List<LogRecord>.generate(
+      final batch = List<SpanData>.generate(
         batchSize,
         (_) => _queue.removeFirst(),
       );
       try {
         final result = await exporter.export(batch, resource);
         if (!result.success) {
-          debugPrint('flutter_otel: batch log export failed: ${result.error}');
+          debugPrint('flutter_otel: batch span export failed: ${result.error}');
         }
       } catch (e, stackTrace) {
-        debugPrint('flutter_otel: batch log export threw: $e\n$stackTrace');
+        debugPrint('flutter_otel: batch span export threw: $e\n$stackTrace');
       }
     }
   }

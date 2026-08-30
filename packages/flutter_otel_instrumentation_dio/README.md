@@ -2,7 +2,9 @@
 
 [Dio](https://pub.dev/packages/dio) HTTP client instrumentation for
 flutter_otel: a `DioOTelInterceptor` that emits a log record per
-request/response/error via an injected `Logger`.
+request/response/error via an injected `Logger`, and — when a `Tracer` is
+also supplied — starts a real CLIENT span per request and propagates it to
+the server via a W3C `traceparent` header.
 
 This is the first of the `flutter_otel_instrumentation_<target>` family —
 the pattern future instrumentation packages (navigation, `go_router`, ...)
@@ -32,7 +34,18 @@ depends on it — apps that use Dio add it directly alongside `flutter_otel`.
   - emits an `error` record on `onError` (adds `error.type`, and
     `http.status_code` when the failed response carries one, plus the
     usual `exception.type`/`exception.message` from the base `Logger.error`
-    behavior).
+    behavior),
+  - when constructed with `tracer:`, additionally starts a `SpanKind.client`
+    span per request on `onRequest` (with `http.method`/`http.url`
+    attributes) and injects it as a `traceparent` header on the outgoing
+    request, joining it into whatever trace/span is active when the request
+    is made; `onResponse` sets `http.status_code` and an `ok` status and
+    ends the span, and `onError` records the exception, sets an `error`
+    status, and ends the span.
+
+  Both the logging and tracing paths are independently exception-safe: a
+  throwing `Logger` or `Tracer`/`Span` can never prevent the Dio handler
+  chain (`handler.next`/`resolve`/`reject`) from running.
 
 ## Install
 
@@ -80,6 +93,10 @@ void wireUpDio(Dio dio) {
   dio.interceptors.add(
     DioOTelInterceptor(
       OTelSdk.instance.getLogger(name: 'flutter_otel_instrumentation_dio'),
+      // Optional: also emit a CLIENT span per request and propagate the
+      // active trace to the server via a `traceparent` header. Omit this
+      // to keep the log-only behavior from before tracing existed.
+      tracer: OTelSdk.instance.getTracer(name: 'flutter_otel_instrumentation_dio'),
     ),
   );
 }

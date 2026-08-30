@@ -4,32 +4,43 @@ import 'package:flutter_otel_exporter_otlp_http/flutter_otel_exporter_otlp_http.
 import 'package:http/http.dart' as http;
 
 import 'batch_log_record_processor.dart';
+import 'batch_span_processor.dart';
 import 'default_session_manager.dart';
 import 'otel_sdk_config.dart';
 import 'sdk_logger_provider.dart';
+import 'sdk_tracer_provider.dart';
 
 /// Top-level facade for flutter_otel: owns the singleton SDK instance, the
-/// [LoggerProvider] pipeline, and (optionally) a [SessionManager].
+/// [LoggerProvider] pipeline, the [TracerProvider] pipeline, and
+/// (optionally) a [SessionManager].
 ///
-/// Traces and metrics are not implemented yet; [loggerProvider] is the only
-/// signal surfaced today, but the shape (a provider + processor/exporter
-/// pipeline keyed off a shared [OTelResource]) is designed so `tracerProvider`
-/// and `meterProvider` can be added later without reshaping this class.
+/// Metrics are not implemented yet; [loggerProvider] and [tracerProvider]
+/// are the signals surfaced today, but the shape (a provider +
+/// processor/exporter pipeline keyed off a shared [OTelResource]) is
+/// designed so `meterProvider` can be added later without reshaping this
+/// class.
 class OTelSdk {
   OTelSdk._({
     required this.loggerProvider,
+    required this.tracerProvider,
     required this.sessionManager,
-    required http.Client? ownedHttpClient,
-  }) : _ownedHttpClient = ownedHttpClient;
+    required List<http.Client> ownedHttpClients,
+  }) : _ownedHttpClients = ownedHttpClients;
 
   /// Owns [Logger] creation and the log processing/export pipeline.
   final LoggerProvider loggerProvider;
+
+  /// Owns [Tracer] creation and the span processing/export pipeline.
+  final TracerProvider tracerProvider;
 
   /// Tracks the current session, or `null` when
   /// [OTelSdkConfig.sessionTrackingEnabled] was `false`.
   final SessionManager? sessionManager;
 
-  final http.Client? _ownedHttpClient;
+  // A list rather than a single client: logs and traces each resolve their
+  // own default-constructed client (when `config.httpClient` isn't given),
+  // so up to two owned clients may need closing on shutdown.
+  final List<http.Client> _ownedHttpClients;
 
   static OTelSdk? _instance;
 
@@ -38,13 +49,22 @@ class OTelSdk {
   /// down first — call [reset] (or `instance.shutdown()`) beforehand if you
   /// need a clean teardown, which is what tests should do between cases.
   static Future<OTelSdk> initialize(OTelSdkConfig config) async {
-    http.Client? ownedHttpClient;
-    final exporter = _resolveExporter(config, onOwnedClient: (client) {
-      ownedHttpClient = client;
-    });
+    final ownedHttpClients = <http.Client>[];
+    void onOwnedClient(http.Client client) => ownedHttpClients.add(client);
 
-    final processor = BatchLogRecordProcessor(
-      exporter,
+    final logExporter = _resolveExporter(config, onOwnedClient: onOwnedClient);
+    final logProcessor = BatchLogRecordProcessor(
+      logExporter,
+      config.resource,
+      maxQueueSize: config.maxQueueSize,
+      maxExportBatchSize: config.maxExportBatchSize,
+      scheduledDelay: config.scheduledDelay,
+    );
+
+    final spanExporter =
+        _resolveSpanExporter(config, onOwnedClient: onOwnedClient);
+    final spanProcessor = BatchSpanProcessor(
+      spanExporter,
       config.resource,
       maxQueueSize: config.maxQueueSize,
       maxExportBatchSize: config.maxExportBatchSize,
@@ -65,16 +85,18 @@ class OTelSdk {
           DefaultSessionManager(idleTimeout: config.sessionTimeout);
     }
 
-    final provider = SdkLoggerProvider(
+    final loggerProvider = SdkLoggerProvider(
       resource: config.resource,
-      processor: processor,
+      processor: logProcessor,
       sessionManager: sessionManager,
     );
+    final tracerProvider = SdkTracerProvider(processor: spanProcessor);
 
     final sdk = OTelSdk._(
-      loggerProvider: provider,
+      loggerProvider: loggerProvider,
+      tracerProvider: tracerProvider,
       sessionManager: sessionManager,
-      ownedHttpClient: ownedHttpClient,
+      ownedHttpClients: ownedHttpClients,
     );
     _instance = sdk;
     return sdk;
@@ -116,6 +138,42 @@ class OTelSdk {
     );
   }
 
+  static SpanExporter _resolveSpanExporter(
+    OTelSdkConfig config, {
+    required void Function(http.Client) onOwnedClient,
+  }) {
+    if (!config.enabled) {
+      return const NoopSpanExporter();
+    }
+    final override = config.spanExporter;
+    if (override != null) {
+      return override;
+    }
+    final endpoint = OtlpHttpSpanExporter.resolveTracesEndpoint(
+      baseEndpoint: config.otlpEndpoint,
+      tracesEndpoint: config.otlpTracesEndpoint,
+    );
+    if (endpoint == null) {
+      return const NoopSpanExporter();
+    }
+    final client = config.httpClient;
+    if (client != null) {
+      return OtlpHttpSpanExporter(
+        endpoint: endpoint,
+        httpClient: client,
+        headers: config.otlpHeaders,
+      );
+    }
+    final ownedClient = http.Client();
+    onOwnedClient(ownedClient);
+    return OtlpHttpSpanExporter(
+      endpoint: endpoint,
+      httpClient: ownedClient,
+      headers: config.otlpHeaders,
+      ownsClient: true,
+    );
+  }
+
   /// The current SDK instance. Throws [StateError] if [initialize] has not
   /// been called (or has been [reset]).
   static OTelSdk get instance {
@@ -145,20 +203,34 @@ class OTelSdk {
   Logger getLogger({String name = 'flutter_otel', String? version}) =>
       loggerProvider.getLogger(name: name, version: version);
 
-  /// Flushes the log pipeline (and, once implemented, trace/metric
-  /// pipelines).
-  Future<void> forceFlush() => loggerProvider.forceFlush();
+  /// Convenience passthrough to `tracerProvider.getTracer(...)`.
+  Tracer getTracer({String name = 'flutter_otel', String? version}) =>
+      tracerProvider.getTracer(name: name, version: version);
+
+  /// Flushes the log and trace pipelines (and, once implemented, the metric
+  /// pipeline).
+  Future<void> forceFlush() async {
+    await Future.wait([
+      loggerProvider.forceFlush(),
+      tracerProvider.forceFlush(),
+    ]);
+  }
 
   /// Flushes and releases every resource owned by this SDK instance: the
-  /// log processor/exporter, any default-constructed HTTP client, and the
-  /// session manager's lifecycle observer.
+  /// log and span processors/exporters, any default-constructed HTTP
+  /// client(s), and the session manager's lifecycle observer.
   Future<void> shutdown() async {
-    await loggerProvider.forceFlush();
-    await loggerProvider.shutdown();
+    await forceFlush();
+    await Future.wait([
+      loggerProvider.shutdown(),
+      tracerProvider.shutdown(),
+    ]);
     final manager = sessionManager;
     if (manager is DefaultSessionManager) {
       manager.dispose();
     }
-    _ownedHttpClient?.close();
+    for (final client in _ownedHttpClients) {
+      client.close();
+    }
   }
 }

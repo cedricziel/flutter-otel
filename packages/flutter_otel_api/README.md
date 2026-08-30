@@ -1,8 +1,10 @@
 # flutter_otel_api
 
 Platform-agnostic OpenTelemetry core for [flutter_otel](../../README.md):
-`OTelResource`, the logs signal contracts (fully implemented), and minimal
-trace/metric stubs so the shape is visibly ready for those signals later.
+`OTelResource`, the logs signal contracts (fully implemented), the traces
+signal contracts (fully implemented, including `Span.current` for
+trace-to-log correlation and W3C Trace Context propagation helpers), and a
+minimal metrics stub so the shape is visibly ready for that signal later.
 
 Pure Dart — **no Flutter, `http`, or `uuid` dependency** — so it can be
 depended on from any Dart target (Flutter apps, but also server, CLI, or web
@@ -38,9 +40,25 @@ It has no dependencies on other workspace members.
 - `SessionManager` — the session-tracking interface (the default
   implementation, which needs `WidgetsBindingObserver`, lives in
   `flutter_otel_sdk`).
-- `Tracer` / `TracerProvider` / `Meter` / `MeterProvider` with `Noop*`
-  implementations — placeholders proving the core doesn't need to change
-  shape when traces/metrics are implemented for real.
+- `SpanContext`, `SpanKind`, `StatusCode`, `SpanEvent`, `SpanData` — the
+  traces data model (`SpanData` is the immutable finished-span snapshot
+  handed to exporters, analogous to `LogRecord`).
+- `Span`, `Tracer`, `TracerProvider`, `SpanProcessor`, `SpanExporter` — the
+  interfaces every concrete traces implementation (in `flutter_otel_sdk` and
+  `flutter_otel_exporter_otlp_http`) is built against.
+- `Span.current` / `Span.runWithSpan` — the ambient "current span" (backed
+  by a `dart:async` `Zone` value) that `Tracer.startActiveSpan`
+  implementations set, and that `flutter_otel_sdk`'s logger reads to
+  automatically correlate logs with the active span.
+- `NoopTracer` / `NoopTracerProvider` / `NoopSpanExporter` — no-op
+  implementations used when tracing has no backing SDK, or when the SDK is
+  disabled.
+- `formatTraceparent` / `parseTraceparent` — encode/decode a W3C Trace
+  Context `traceparent` header, for propagating the active trace across an
+  outgoing HTTP request (used by `flutter_otel_instrumentation_dio`).
+- `Meter` / `MeterProvider` with `Noop*` implementations — a placeholder
+  proving the core doesn't need to change shape when metrics are
+  implemented for real.
 
 ## Install
 

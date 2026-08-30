@@ -2,6 +2,7 @@ import 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_log_record_exporter.dart';
+import 'support/fake_span_exporter.dart';
 
 class _FakeSessionManager implements SessionManager {
   _FakeSessionManager(this._id);
@@ -92,6 +93,72 @@ void main() {
       await processor.forceFlush();
 
       expect(exporter.allRecords.single.attributes['session.id'], 'explicit');
+    });
+  });
+
+  group('SdkLoggerProvider trace-to-log correlation', () {
+    test('does not stamp traceId/spanId when no span is active', () async {
+      final processor = SimpleLogRecordProcessor(exporter, resource);
+      final provider =
+          SdkLoggerProvider(resource: resource, processor: processor);
+
+      provider.getLogger().info('hello');
+      await processor.forceFlush();
+
+      final record = exporter.allRecords.single;
+      expect(record.traceId, isNull);
+      expect(record.spanId, isNull);
+    });
+
+    test('stamps traceId/spanId from Span.current when a span is active',
+        () async {
+      final processor = SimpleLogRecordProcessor(exporter, resource);
+      final provider =
+          SdkLoggerProvider(resource: resource, processor: processor);
+      final spanProcessor = SimpleSpanProcessor(
+        FakeSpanExporter(),
+        resource,
+      );
+      final tracer =
+          SdkTracer(name: 't', version: null, processor: spanProcessor);
+
+      SpanContext? activeContext;
+      await tracer.startActiveSpan('op', (span) async {
+        activeContext = span.spanContext;
+        provider.getLogger().info('inside span');
+      });
+      await processor.forceFlush();
+
+      final record = exporter.allRecords.single;
+      expect(record.traceId, activeContext!.traceId);
+      expect(record.spanId, activeContext!.spanId);
+    });
+
+    test('does not overwrite an explicitly-set traceId/spanId', () async {
+      final processor = SimpleLogRecordProcessor(exporter, resource);
+      final provider =
+          SdkLoggerProvider(resource: resource, processor: processor);
+      final spanProcessor = SimpleSpanProcessor(
+        FakeSpanExporter(),
+        resource,
+      );
+      final tracer =
+          SdkTracer(name: 't', version: null, processor: spanProcessor);
+
+      await tracer.startActiveSpan('op', (span) async {
+        provider.getLogger().emit(
+              LogRecord(
+                body: 'explicit',
+                traceId: 'explicit-trace',
+                spanId: 'explicit-span',
+              ),
+            );
+      });
+      await processor.forceFlush();
+
+      final record = exporter.allRecords.single;
+      expect(record.traceId, 'explicit-trace');
+      expect(record.spanId, 'explicit-span');
     });
   });
 

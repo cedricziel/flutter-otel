@@ -1,7 +1,7 @@
 # flutter_otel_exporter_otlp_http
 
-An OTLP/HTTP log exporter using JSON encoding (the protobuf JSON mapping) —
-no protobuf/binary codegen dependency.
+OTLP/HTTP log and span exporters using JSON encoding (the protobuf JSON
+mapping) — no protobuf/binary codegen dependency.
 
 Pure Dart — **no Flutter dependency** — so it works from non-Flutter Dart
 targets (server, CLI, web) in addition to Flutter apps. The `http.Client` is
@@ -29,6 +29,14 @@ umbrella package.
   endpoint per `OTEL_EXPORTER_OTLP_ENDPOINT` /
   `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` semantics: an explicit logs endpoint
   wins verbatim; otherwise `/v1/logs` is appended to a base endpoint.
+- `OtlpHttpSpanExporter` — POSTs a batch of `SpanData` as OTLP/HTTP JSON to
+  a resolved `/v1/traces` endpoint, mirroring `OtlpHttpLogExporter` in every
+  respect (never throws, same header-injection pattern). `SpanKind` and
+  `StatusCode` map 1:1 onto OTLP's numeric `SpanKind`/`StatusCode` enums.
+- `OtlpHttpSpanExporter.resolveTracesEndpoint` — resolves the effective
+  traces endpoint per `OTEL_EXPORTER_OTLP_ENDPOINT` /
+  `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` semantics, mirroring
+  `resolveLogsEndpoint`.
 
 ## Install
 

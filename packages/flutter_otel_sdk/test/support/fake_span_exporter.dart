@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_otel_api/flutter_otel_api.dart';
 
-/// A [LogRecordExporter] test double that records every batch it receives
-/// and can be configured to fail or to complete only when released, so
-/// tests can assert on batching/timing behavior deterministically.
-class FakeLogRecordExporter implements LogRecordExporter {
-  final List<List<LogRecord>> exportedBatches = [];
+/// A [SpanExporter] test double that records every batch it receives and
+/// can be configured to fail or to complete only when released, so tests
+/// can assert on batching/timing behavior deterministically.
+class FakeSpanExporter implements SpanExporter {
+  final List<List<SpanData>> exportedBatches = [];
   final List<OTelResource> resources = [];
   int shutdownCallCount = 0;
 
@@ -28,13 +28,13 @@ class FakeLogRecordExporter implements LogRecordExporter {
 
   @override
   Future<ExportResult> export(
-    List<LogRecord> records,
+    List<SpanData> spans,
     OTelResource resource,
   ) async {
     if (gate != null) {
       await gate!.future;
     }
-    exportedBatches.add(records);
+    exportedBatches.add(spans);
     resources.add(resource);
     final completer = _nextExport;
     _nextExport = Completer<void>();
@@ -47,7 +47,7 @@ class FakeLogRecordExporter implements LogRecordExporter {
     shutdownCallCount++;
   }
 
-  /// All records across every batch exported so far, in order.
-  List<LogRecord> get allRecords =>
+  /// All spans across every batch exported so far, in order.
+  List<SpanData> get allSpans =>
       exportedBatches.expand((batch) => batch).toList();
 }

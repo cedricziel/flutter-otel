@@ -17,6 +17,134 @@ class _ThrowingLogger extends Logger {
   void emit(LogRecord record) => throw StateError('boom: a misbehaving logger');
 }
 
+class _RecordingSpan implements Span {
+  _RecordingSpan(this.name, this.spanContext, this.kind);
+
+  @override
+  final String name;
+
+  @override
+  final SpanContext spanContext;
+
+  final SpanKind kind;
+  final Map<String, Object?> attributes = {};
+  final List<SpanEvent> events = [];
+  StatusCode? statusCode;
+  String? statusDescription;
+  Object? recordedException;
+  bool ended = false;
+
+  @override
+  bool get isRecording => !ended;
+
+  @override
+  void setAttribute(String key, Object? value) => attributes[key] = value;
+
+  @override
+  void setAttributes(Map<String, Object?> attributes) =>
+      this.attributes.addAll(attributes);
+
+  @override
+  void addEvent(
+    String name, {
+    Map<String, Object?>? attributes,
+    DateTime? timestamp,
+  }) =>
+      events.add(
+        SpanEvent(
+          name: name,
+          timestamp: timestamp,
+          attributes: attributes ?? const {},
+        ),
+      );
+
+  @override
+  void setStatus(StatusCode code, {String? description}) {
+    statusCode = code;
+    statusDescription = description;
+  }
+
+  @override
+  void recordException(
+    Object exception, {
+    StackTrace? stackTrace,
+    Map<String, Object?>? attributes,
+  }) =>
+      recordedException = exception;
+
+  @override
+  void end([DateTime? endTime]) => ended = true;
+}
+
+/// A [Tracer] test double that records every span it starts, so tests can
+/// assert on kind/attributes/propagation without a real SDK pipeline.
+class _RecordingTracer implements Tracer {
+  final List<_RecordingSpan> startedSpans = [];
+  int _counter = 0;
+
+  @override
+  String get name => 'test-tracer';
+
+  @override
+  Span startSpan(
+    String name, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+    SpanContext? parentContext,
+  }) {
+    _counter++;
+    final span = _RecordingSpan(
+      name,
+      SpanContext(
+        traceId: 'a' * 32,
+        spanId: _counter.toRadixString(16).padLeft(16, '0'),
+      ),
+      kind,
+    );
+    if (attributes != null) span.setAttributes(attributes);
+    startedSpans.add(span);
+    return span;
+  }
+
+  @override
+  Future<T> startActiveSpan<T>(
+    String name,
+    Future<T> Function(Span span) body, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+  }) async {
+    final span = startSpan(name, kind: kind, attributes: attributes);
+    try {
+      return await body(span);
+    } finally {
+      span.end();
+    }
+  }
+}
+
+class _ThrowingTracer implements Tracer {
+  @override
+  String get name => 'throwing-tracer';
+
+  @override
+  Span startSpan(
+    String name, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+    SpanContext? parentContext,
+  }) =>
+      throw StateError('boom: a misbehaving tracer');
+
+  @override
+  Future<T> startActiveSpan<T>(
+    String name,
+    Future<T> Function(Span span) body, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+  }) =>
+      throw StateError('boom: a misbehaving tracer');
+}
+
 void main() {
   late _RecordingLogger logger;
   late DateTime now;
@@ -268,6 +396,199 @@ void main() {
         dio.get<void>('/widgets'),
         throwsA(isA<DioException>()),
       );
+    });
+  });
+
+  group('DioOTelInterceptor with a Tracer', () {
+    test('onRequest without a tracer never injects a traceparent header', () {
+      final interceptor = buildInterceptor();
+      final options = buildRequestOptions();
+      final handler = RequestInterceptorHandler();
+
+      interceptor.onRequest(options, handler);
+
+      expect(options.headers.containsKey('traceparent'), isFalse);
+    });
+
+    test(
+        'onRequest starts a CLIENT span and injects a matching traceparent '
+        'header', () {
+      final tracer = _RecordingTracer();
+      final interceptor = DioOTelInterceptor(logger, tracer: tracer);
+      final options = buildRequestOptions();
+      final handler = RequestInterceptorHandler();
+
+      interceptor.onRequest(options, handler);
+
+      expect(tracer.startedSpans, hasLength(1));
+      final span = tracer.startedSpans.single;
+      expect(span.kind, SpanKind.client);
+      expect(span.attributes['http.method'], 'GET');
+      expect(span.attributes['http.url'], options.uri.toString());
+
+      expect(
+        options.headers['traceparent'],
+        formatTraceparent(span.spanContext),
+      );
+      expect(handler.isCompleted, isTrue);
+    });
+
+    test('onResponse ends the span with an ok status and the status code', () {
+      final tracer = _RecordingTracer();
+      final interceptor = DioOTelInterceptor(logger, tracer: tracer);
+      final options = buildRequestOptions();
+      interceptor.onRequest(options, RequestInterceptorHandler());
+
+      final response = Response<dynamic>(
+        requestOptions: options,
+        statusCode: 200,
+      );
+      final handler = ResponseInterceptorHandler();
+      interceptor.onResponse(response, handler);
+
+      final span = tracer.startedSpans.single;
+      expect(span.ended, isTrue);
+      expect(span.statusCode, StatusCode.ok);
+      expect(span.attributes['http.status_code'], 200);
+      expect(handler.isCompleted, isTrue);
+    });
+
+    test(
+        'onError ends the span with an error status and records the '
+        'exception', () async {
+      final tracer = _RecordingTracer();
+      final interceptor = DioOTelInterceptor(logger, tracer: tracer);
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
+        ..interceptors.add(interceptor)
+        ..httpClientAdapter =
+            _FakeAdapter(throwError: const SocketExceptionStub());
+
+      await expectLater(
+        dio.get<void>('/widgets'),
+        throwsA(isA<DioException>()),
+      );
+
+      final span = tracer.startedSpans.single;
+      expect(span.ended, isTrue);
+      expect(span.statusCode, StatusCode.error);
+      expect(span.recordedException, isNotNull);
+    });
+
+    test('still forwards the request when the injected Tracer throws', () {
+      final interceptor = DioOTelInterceptor(logger, tracer: _ThrowingTracer());
+      final options = buildRequestOptions();
+      final handler = RequestInterceptorHandler();
+
+      expect(() => interceptor.onRequest(options, handler), returnsNormally);
+      expect(handler.isCompleted, isTrue);
+      expect(logger.emitted, hasLength(1)); // the log call still went through
+    });
+
+    test('still forwards the response when the injected Tracer throws', () {
+      // The span itself throws on every mutation, but onRequest already
+      // stashed it in extra — exercise onResponse's retrieval + mutation
+      // path, not just onRequest's creation path.
+      final interceptor = DioOTelInterceptor(logger, tracer: _ThrowingTracer());
+      final options = buildRequestOptions();
+      // _ThrowingTracer.startSpan throws, so onRequest's _safeTrace catches
+      // it and no span ever lands in extra; onResponse must still tolerate
+      // that (no span to retrieve) without throwing.
+      interceptor.onRequest(options, RequestInterceptorHandler());
+      final response = Response<dynamic>(
+        requestOptions: options,
+        statusCode: 200,
+      );
+      final handler = ResponseInterceptorHandler();
+
+      expect(
+        () => interceptor.onResponse(response, handler),
+        returnsNormally,
+      );
+      expect(handler.isCompleted, isTrue);
+    });
+
+    test('still forwards the error when the injected Tracer throws', () async {
+      final interceptor = DioOTelInterceptor(logger, tracer: _ThrowingTracer());
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
+        ..interceptors.add(interceptor)
+        ..httpClientAdapter =
+            _FakeAdapter(throwError: const SocketExceptionStub());
+
+      await expectLater(
+        dio.get<void>('/widgets'),
+        throwsA(isA<DioException>()),
+      );
+    });
+
+    test(
+        'onResponse marks the span as an error for a 4xx/5xx status reached '
+        'via validateStatus (not just onError)', () {
+      final tracer = _RecordingTracer();
+      final interceptor = DioOTelInterceptor(logger, tracer: tracer);
+      final options = buildRequestOptions();
+      interceptor.onRequest(options, RequestInterceptorHandler());
+
+      final response = Response<dynamic>(
+        requestOptions: options,
+        statusCode: 503,
+      );
+      final handler = ResponseInterceptorHandler();
+      interceptor.onResponse(response, handler);
+
+      final span = tracer.startedSpans.single;
+      expect(span.ended, isTrue);
+      expect(span.statusCode, StatusCode.error);
+      expect(span.attributes['http.status_code'], 503);
+      expect(handler.isCompleted, isTrue);
+    });
+
+    test('onResponse keeps an ok status for a 2xx/3xx response', () {
+      final tracer = _RecordingTracer();
+      final interceptor = DioOTelInterceptor(logger, tracer: tracer);
+      final options = buildRequestOptions();
+      interceptor.onRequest(options, RequestInterceptorHandler());
+
+      final response = Response<dynamic>(
+        requestOptions: options,
+        statusCode: 302,
+      );
+      interceptor.onResponse(response, ResponseInterceptorHandler());
+
+      final span = tracer.startedSpans.single;
+      expect(span.statusCode, StatusCode.ok);
+    });
+
+    test(
+        'two interceptor instances on one Dio client each end and export '
+        'their own span without clobbering the other', () async {
+      final tracerA = _RecordingTracer();
+      final tracerB = _RecordingTracer();
+      final loggerA = _RecordingLogger();
+      final loggerB = _RecordingLogger();
+      final interceptorA = DioOTelInterceptor(loggerA, tracer: tracerA);
+      final interceptorB = DioOTelInterceptor(loggerB, tracer: tracerB);
+
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
+        ..interceptors.add(interceptorA)
+        ..interceptors.add(interceptorB)
+        ..httpClientAdapter = _FakeAdapter(statusCode: 200);
+
+      await dio.get<void>('/widgets');
+
+      expect(tracerA.startedSpans, hasLength(1));
+      expect(tracerB.startedSpans, hasLength(1));
+
+      final spanA = tracerA.startedSpans.single;
+      final spanB = tracerB.startedSpans.single;
+
+      // Each interceptor's own span must have ended and been given a
+      // status; neither should have been overwritten/dropped by the other
+      // interceptor's use of `extra`.
+      expect(spanA.ended, isTrue);
+      expect(spanB.ended, isTrue);
+      expect(spanA.statusCode, StatusCode.ok);
+      expect(spanB.statusCode, StatusCode.ok);
+      expect(identical(spanA, spanB), isFalse);
     });
   });
 }
