@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  FLUTTER_VERSION: '3.47.2'
+
+jobs:
+  ci:
+    # A standard Linux runner is sufficient: nothing in this repo touches
+    # platform channels or native code, so no macOS/Xcode setup is needed
+    # here even though iOS/macOS are the primary supported targets.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      # Resolves every workspace member (packages/*) in one go.
+      - name: flutter pub get (workspace root)
+        run: flutter pub get
+
+      - name: Format check (whole workspace)
+        run: dart format --output=none --set-exit-if-changed .
+
+      # --- flutter_otel_api: pure Dart, no Flutter dependency ---
+      - name: Analyze flutter_otel_api
+        working-directory: packages/flutter_otel_api
+        run: dart analyze
+      - name: Test flutter_otel_api
+        working-directory: packages/flutter_otel_api
+        run: dart test
+
+      # --- flutter_otel_exporter_otlp_http: pure Dart, no Flutter dependency ---
+      - name: Analyze flutter_otel_exporter_otlp_http
+        working-directory: packages/flutter_otel_exporter_otlp_http
+        run: dart analyze
+      - name: Test flutter_otel_exporter_otlp_http
+        working-directory: packages/flutter_otel_exporter_otlp_http
+        run: dart test
+
+      # --- flutter_otel_instrumentation_dio: pure Dart (Dio has no Flutter
+      # dependency either), so this also uses dart analyze/dart test.
+      - name: Analyze flutter_otel_instrumentation_dio
+        working-directory: packages/flutter_otel_instrumentation_dio
+        run: dart analyze
+      - name: Test flutter_otel_instrumentation_dio
+        working-directory: packages/flutter_otel_instrumentation_dio
+        run: dart test
+
+      # --- flutter_otel_sdk: depends on Flutter (WidgetsBindingObserver) ---
+      - name: Analyze flutter_otel_sdk
+        working-directory: packages/flutter_otel_sdk
+        run: flutter analyze
+      - name: Test flutter_otel_sdk
+        working-directory: packages/flutter_otel_sdk
+        run: flutter test
+
+      # --- flutter_otel: umbrella package, depends on Flutter ---
+      - name: Analyze flutter_otel
+        working-directory: packages/flutter_otel
+        run: flutter analyze
+      - name: Test flutter_otel
+        working-directory: packages/flutter_otel
+        run: flutter test
