@@ -1,0 +1,32 @@
+name: flutter_otel_native
+description: >
+  Native (Swift) telemetry foundation for flutter_otel on iOS/macOS: an
+  on-disk queue that lets native code record finished spans/log records
+  before or without a running Dart isolate, plus a MethodChannel bridge
+  that drains it into the existing TracerProvider/LoggerProvider pipeline.
+version: 0.1.0
+homepage: https://github.com/cedricziel/flutter-otel
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_otel_api: ^0.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+resolution: workspace
+
+flutter:
+  plugin:
+    platforms:
+      ios:
+        pluginClass: FlutterOtelNativePlugin
+      macos:
+        pluginClass: FlutterOtelNativePlugin
