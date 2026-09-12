@@ -77,7 +77,8 @@ void main() {
       span.end();
     });
 
-    test('startActiveSpan makes the span current for body and returns its '
+    test(
+        'startActiveSpan makes the span current for body and returns its '
         'result', () async {
       final tracer = const NoopTracer('test');
       final result = await tracer.startActiveSpan('op', (span) async {

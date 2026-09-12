@@ -34,7 +34,9 @@ never on `flutter_otel_sdk`, so it stays usable against any
   sub-package under `native/`) — the entry point future native
   instrumentation calls to record a finished span or log. Defaults a new
   record onto whatever trace context/session was last set, or starts a
-  fresh root trace if nothing was set.
+  fresh root trace if nothing was set. Native instrumentation reaches the
+  shared instance via `NativeTelemetry.shared` rather than constructing
+  its own.
 - **`RecordQueue`** (Swift) — the on-disk, capped, NDJSON-backed queue
   `NativeTelemetryRecorder` writes to, so recorded data survives until
   Dart is next able to drain it.

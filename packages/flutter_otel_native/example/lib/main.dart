@@ -30,7 +30,8 @@ class _MyAppState extends State<MyApp> {
     );
     if (!mounted) return;
     setState(() {
-      _status = 'ingested: ${result.recordsIngested}, '
+      _status =
+          'ingested: ${result.recordsIngested}, '
           'skipped: ${result.recordsSkipped}, '
           'dropped: ${result.recordsDropped}';
     });

@@ -12,9 +12,10 @@ permissions:
 
 jobs:
   ci:
-    # A standard Linux runner is sufficient: nothing in this repo touches
-    # platform channels or native code, so no macOS/Xcode setup is needed
-    # here even though iOS/macOS are the primary supported targets.
+    # A standard Linux runner is sufficient here: flutter_otel_native's
+    # Dart-side tests don't need a real device/simulator. The native Swift
+    # code and the example app build are covered by the separate
+    # macos-native-tests job below instead.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,9 +87,10 @@ jobs:
         run: flutter test
 
   macos-native-tests:
-    # NativeTelemetryCore has no Flutter dependency, so this only needs
-    # the Swift toolchain macos-latest ships with — no Flutter/Xcode
-    # project setup required.
+    # NativeTelemetryCore has no Flutter dependency, so swift test only
+    # needs the Swift toolchain macos-latest ships with. Building the
+    # example app below exercises the Flutter/Xcode side (the plugin and
+    # its podspecs) that swift test alone does not touch.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,3 +100,16 @@ jobs:
       - name: swift test (NativeTelemetryCore)
         working-directory: packages/flutter_otel_native/native/NativeTelemetryCore
         run: swift test
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: flutter pub get (example)
+        working-directory: packages/flutter_otel_native/example
+        run: flutter pub get
+
+      - name: Build macOS example app (exercises the podspec/Package.swift wiring)
+        working-directory: packages/flutter_otel_native/example
+        run: flutter build macos --debug
