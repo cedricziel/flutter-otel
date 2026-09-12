@@ -5,3 +5,4 @@
 library;
 
 export 'src/native_record_codec.dart';
+export 'src/native_telemetry_bridge.dart';
