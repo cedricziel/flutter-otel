@@ -49,6 +49,11 @@ flutter-otel/
     flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
                                          # including CLIENT spans + traceparent
                                          # propagation when a Tracer is given
+    flutter_otel_native/                # native (Swift) telemetry foundation
+                                         # for iOS/macOS: an on-disk queue +
+                                         # MethodChannel bridge so native code
+                                         # can record spans/logs before or
+                                         # without a running Dart isolate
 ```
 
 Three packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`, and
@@ -66,6 +71,7 @@ example specific to it:
 - [`packages/flutter_otel_exporter_otlp_http`](packages/flutter_otel_exporter_otlp_http/README.md)
 - [`packages/flutter_otel`](packages/flutter_otel/README.md)
 - [`packages/flutter_otel_instrumentation_dio`](packages/flutter_otel_instrumentation_dio/README.md)
+- [`packages/flutter_otel_native`](packages/flutter_otel_native/README.md)
 
 ## Quick start
 
@@ -186,6 +192,11 @@ README for details.
 - **`tracestate` propagation** — `formatTraceparent`/`parseTraceparent`
   handle the W3C `traceparent` header only; this SDK has no vendor-specific
   state to carry in `tracestate` and doesn't round-trip anyone else's.
+- **Native (Swift) instrumentation beyond the foundation** —
+  `flutter_otel_native` provides the recording/queuing/bridging plumbing
+  only; cold-start timing, native crash capture, background-task tracing,
+  and native networking instrumentation are each a separate, later spec
+  built on top of it (see `docs/superpowers/specs/` for the design).
 
 ## Development
 
