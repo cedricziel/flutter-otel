@@ -162,6 +162,20 @@ void main() {
     });
   });
 
+  group('SdkLoggerProvider.ingestLogRecord', () {
+    test('forwards the record to the configured processor unchanged', () async {
+      final processor = SimpleLogRecordProcessor(exporter, resource);
+      final provider =
+          SdkLoggerProvider(resource: resource, processor: processor);
+      final record = LogRecord(body: 'native log');
+
+      provider.ingestLogRecord(record);
+      await processor.forceFlush();
+
+      expect(exporter.allRecords, [same(record)]);
+    });
+  });
+
   group('SdkLoggerProvider.getLogger', () {
     test('stamps the requested name/version as the record scope', () async {
       final processor = SimpleLogRecordProcessor(exporter, resource);
