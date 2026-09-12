@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  FLUTTER_VERSION: '3.47.2'
+  FLUTTER_VERSION: "3.47.2"
 
 permissions:
   contents: read
@@ -66,6 +66,17 @@ jobs:
         working-directory: packages/flutter_otel_sdk
         run: flutter test
 
+      # --- flutter_otel_native: depends on Flutter (MethodChannel). Only
+      # the Dart side is tested here — the Swift side has no Flutter
+      # dependency and is tested by the macos-native-tests job below,
+      # which needs no Xcode/iOS toolchain setup at all as a result.
+      - name: Analyze flutter_otel_native
+        working-directory: packages/flutter_otel_native
+        run: flutter analyze
+      - name: Test flutter_otel_native
+        working-directory: packages/flutter_otel_native
+        run: flutter test
+
       # --- flutter_otel: umbrella package, depends on Flutter ---
       - name: Analyze flutter_otel
         working-directory: packages/flutter_otel
@@ -73,3 +84,17 @@ jobs:
       - name: Test flutter_otel
         working-directory: packages/flutter_otel
         run: flutter test
+
+  macos-native-tests:
+    # NativeTelemetryCore has no Flutter dependency, so this only needs
+    # the Swift toolchain macos-latest ships with — no Flutter/Xcode
+    # project setup required.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: swift test (NativeTelemetryCore)
+        working-directory: packages/flutter_otel_native/native/NativeTelemetryCore
+        run: swift test
