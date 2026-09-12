@@ -7,20 +7,22 @@ void main() {
       expect(Span.current, isNull);
     });
 
-    test('runWithSpan makes a span current only for the duration of body',
-        () async {
-      final tracer = const NoopTracer('test');
-      final span = tracer.startSpan('outer');
+    test(
+      'runWithSpan makes a span current only for the duration of body',
+      () async {
+        final tracer = const NoopTracer('test');
+        final span = tracer.startSpan('outer');
 
-      Span? observedInside;
-      await Span.runWithSpan(span, () async {
-        observedInside = Span.current;
-        return null;
-      });
+        Span? observedInside;
+        await Span.runWithSpan(span, () async {
+          observedInside = Span.current;
+          return null;
+        });
 
-      expect(observedInside, same(span));
-      expect(Span.current, isNull);
-    });
+        expect(observedInside, same(span));
+        expect(Span.current, isNull);
+      },
+    );
 
     test('stays current across an await gap inside body', () async {
       final tracer = const NoopTracer('test');
@@ -35,24 +37,26 @@ void main() {
       expect(observedAfterAwait, same(span));
     });
 
-    test('nesting restores the outer span once the inner one completes',
-        () async {
-      final tracer = const NoopTracer('test');
-      final outer = tracer.startSpan('outer');
-      final inner = tracer.startSpan('inner');
+    test(
+      'nesting restores the outer span once the inner one completes',
+      () async {
+        final tracer = const NoopTracer('test');
+        final outer = tracer.startSpan('outer');
+        final inner = tracer.startSpan('inner');
 
-      Span? observedInInner;
-      Span? observedAfterInner;
-      await Span.runWithSpan(outer, () async {
-        await Span.runWithSpan(inner, () async {
-          observedInInner = Span.current;
+        Span? observedInInner;
+        Span? observedAfterInner;
+        await Span.runWithSpan(outer, () async {
+          await Span.runWithSpan(inner, () async {
+            observedInInner = Span.current;
+          });
+          observedAfterInner = Span.current;
         });
-        observedAfterInner = Span.current;
-      });
 
-      expect(observedInInner, same(inner));
-      expect(observedAfterInner, same(outer));
-    });
+        expect(observedInInner, same(inner));
+        expect(observedAfterInner, same(outer));
+      },
+    );
   });
 
   group('NoopTracer', () {
@@ -73,8 +77,7 @@ void main() {
       span.end();
     });
 
-    test(
-        'startActiveSpan makes the span current for body and returns its '
+    test('startActiveSpan makes the span current for body and returns its '
         'result', () async {
       final tracer = const NoopTracer('test');
       final result = await tracer.startActiveSpan('op', (span) async {
@@ -111,6 +114,21 @@ void main() {
       const provider = NoopTracerProvider();
       await expectLater(provider.forceFlush(), completes);
       await expectLater(provider.shutdown(), completes);
+    });
+
+    test('ingestSpan does not throw', () {
+      const provider = NoopTracerProvider();
+      final span = SpanData(
+        name: 'op',
+        spanContext: const SpanContext(
+          traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+          spanId: '00f067aa0ba902b7',
+        ),
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+      );
+
+      expect(() => provider.ingestSpan(span), returnsNormally);
     });
   });
 }
