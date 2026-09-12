@@ -237,7 +237,7 @@ Add to `packages/flutter_otel_sdk/test/sdk_logger_provider_test.dart`, as a new 
   });
 ```
 
-(Check `FakeLogRecordExporter`'s accessor name first — `packages/flutter_otel_sdk/test/support/fake_log_record_exporter.dart` — and use whatever it actually exposes, e.g. `allRecords` or `exportedBatches.expand(...)`, matching the pattern `fake_span_exporter.dart` uses for `allSpans`.)
+(`allRecords` is a real getter on `FakeLogRecordExporter` — `packages/flutter_otel_sdk/test/support/fake_log_record_exporter.dart:46` — that flattens `exportedBatches`, mirroring `FakeSpanExporter.allSpans`.)
 
 - [ ] **Step 2: Run the test to verify it fails**
 
