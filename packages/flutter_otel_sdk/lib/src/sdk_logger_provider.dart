@@ -37,6 +37,9 @@ class SdkLoggerProvider implements LoggerProvider {
   }
 
   @override
+  void ingestLogRecord(LogRecord record) => processor.onEmit(record);
+
+  @override
   Future<void> forceFlush() => processor.forceFlush();
 
   @override

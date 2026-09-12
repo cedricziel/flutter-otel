@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -57,6 +59,46 @@ void main() {
 
       await provider.shutdown();
       expect(exporter.shutdownCallCount, 1);
+    });
+  });
+
+  group('SdkTracerProvider.ingestSpan', () {
+    test(
+        'does not export synchronously; forceFlush is required to observe '
+        'it', () {
+      final provider = SdkTracerProvider(processor: processor);
+      exporter.gate = Completer<void>();
+      final span = SpanData(
+        name: 'native.op',
+        spanContext: const SpanContext(
+          traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+          spanId: '00f067aa0ba902b7',
+        ),
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+      );
+
+      provider.ingestSpan(span);
+
+      expect(exporter.allSpans, isEmpty);
+    });
+
+    test('the ingested span is exported after forceFlush', () async {
+      final provider = SdkTracerProvider(processor: processor);
+      final span = SpanData(
+        name: 'native.op',
+        spanContext: const SpanContext(
+          traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+          spanId: '00f067aa0ba902b7',
+        ),
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+      );
+
+      provider.ingestSpan(span);
+      await provider.forceFlush();
+
+      expect(exporter.allSpans, [same(span)]);
     });
   });
 }
