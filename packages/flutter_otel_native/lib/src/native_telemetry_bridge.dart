@@ -66,4 +66,22 @@ class NativeTelemetryBridge {
       recordsDropped: dropped,
     );
   }
+
+  /// Tags subsequent native records with [sessionId] as a `session.id`
+  /// attribute. Call once at startup and again whenever the session rolls.
+  Future<void> setSessionId(String sessionId) =>
+      _channel.invokeMethod('setSessionId', {'sessionId': sessionId});
+
+  /// Tells native the currently active trace/span, so a native record
+  /// taken moments later attaches as its child by default instead of
+  /// starting a new root.
+  Future<void> setCurrentTraceContext(SpanContext context) =>
+      _channel.invokeMethod('setCurrentTraceContext', {
+        'traceId': context.traceId,
+        'spanId': context.spanId,
+      });
+
+  /// Clears whatever [setCurrentTraceContext] last set.
+  Future<void> clearCurrentTraceContext() =>
+      _channel.invokeMethod('clearCurrentTraceContext');
 }

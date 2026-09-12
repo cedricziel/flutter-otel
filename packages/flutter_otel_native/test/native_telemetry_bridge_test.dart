@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter_otel_api/flutter_otel_api.dart';
 import 'package:flutter_otel_native/flutter_otel_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -97,5 +98,56 @@ void main() {
     expect(result.recordsIngested, 0);
     expect(result.recordsSkipped, 0);
     expect(result.recordsDropped, 0);
+  });
+
+  group('session and trace-context primitives', () {
+    test('setSessionId invokes the channel with the session id', () async {
+      MethodCall? invoked;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        invoked = call;
+        return null;
+      });
+
+      await bridge.setSessionId('session-123');
+
+      expect(invoked?.method, 'setSessionId');
+      expect(invoked?.arguments, {'sessionId': 'session-123'});
+    });
+
+    test('setCurrentTraceContext invokes the channel with traceId/spanId',
+        () async {
+      MethodCall? invoked;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        invoked = call;
+        return null;
+      });
+
+      await bridge.setCurrentTraceContext(const SpanContext(
+        traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+        spanId: '00f067aa0ba902b7',
+      ));
+
+      expect(invoked?.method, 'setCurrentTraceContext');
+      expect(invoked?.arguments, {
+        'traceId': '4bf92f3577b34da6a3ce929d0e0e4736',
+        'spanId': '00f067aa0ba902b7',
+      });
+    });
+
+    test('clearCurrentTraceContext invokes the channel with no arguments',
+        () async {
+      MethodCall? invoked;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        invoked = call;
+        return null;
+      });
+
+      await bridge.clearCurrentTraceContext();
+
+      expect(invoked?.method, 'clearCurrentTraceContext');
+    });
   });
 }
