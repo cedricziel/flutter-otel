@@ -41,6 +41,29 @@ never on `flutter_otel_sdk`, so it stays usable against any
   `NativeTelemetryRecorder` writes to, so recorded data survives until
   Dart is next able to drain it.
 
+### Why `NativeTelemetryCore`'s sources are vendored into `ios/` and `macos/`
+
+`native/NativeTelemetryCore` is the source of truth (and what `swift test`
+runs against), but the `ios/flutter_otel_native/Sources/flutter_otel_native/
+NativeTelemetryCore/` and `macos/.../NativeTelemetryCore/` folders hold a
+duplicated copy of the same files, kept in sync by hand. Two more natural
+approaches were tried first and both broke in practice:
+
+- A nested `Package.swift` dependency (`.package(path:
+"../../native/NativeTelemetryCore")`) fails under Flutter's Swift Package
+  Manager plugin integration: Flutter copies a plugin's own package folder
+  into the consuming app's `ephemeral/Packages/` directory, and that copy
+  doesn't include sibling directories reached via `..`, so the relative
+  path resolves to a location that doesn't exist. (This is why these two
+  platform folders have no `Package.swift` at all — Flutter falls back to
+  CocoaPods for this plugin.)
+- A CocoaPods `source_files` glob reaching outside the pod's own directory
+  (`../native/...`) is not reliably picked up by CocoaPods/Xcode project
+  generation — the module ends up missing the symbols entirely.
+
+Vendoring plain files inside each plugin's own `Sources/` tree sidesteps
+both problems at the cost of manual sync.
+
 ## Usage
 
 ```dart
