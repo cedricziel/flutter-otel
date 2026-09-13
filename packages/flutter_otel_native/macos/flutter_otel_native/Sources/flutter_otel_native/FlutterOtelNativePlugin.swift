@@ -1,5 +1,4 @@
 import FlutterMacOS
-import NativeTelemetryCore
 
 public class FlutterOtelNativePlugin: NSObject, FlutterPlugin {
     private let recorder = NativeTelemetry.shared

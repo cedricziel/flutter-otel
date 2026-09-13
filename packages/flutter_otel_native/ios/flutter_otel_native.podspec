@@ -11,8 +11,7 @@ flutter_otel's existing OTLP export pipeline.
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Cedric Ziel' => 'cedric.ziel@gmail.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'flutter_otel_native/Sources/flutter_otel_native/**/*',
-                    '../native/NativeTelemetryCore/Sources/NativeTelemetryCore/**/*'
+  s.source_files = 'flutter_otel_native/Sources/flutter_otel_native/**/*'
   s.dependency 'Flutter'
   s.platform = :ios, '15.0'
 
