@@ -93,10 +93,15 @@ public final class NativeTelemetryRecorder {
         let sessionId = currentSessionId
         lock.unlock()
 
+        // A parent link is only meaningful when the trace id itself came from
+        // the caller or the inherited context — a parent can't exist inside a
+        // trace this call just generated from scratch.
+        let traceIdWasProvided = explicitTraceId != nil || inheritedTraceId != nil
         let traceId = explicitTraceId ?? inheritedTraceId ?? NativeId.generateTraceId()
         let spanId = explicitSpanId ?? NativeId.generateSpanId()
-        let parentSpanId = explicitParentSpanId
-            ?? (explicitTraceId == nil ? inheritedSpanId : nil)
+        let parentSpanId = traceIdWasProvided
+            ? (explicitParentSpanId ?? (explicitTraceId == nil ? inheritedSpanId : nil))
+            : nil
 
         var mergedAttributes = attributes
         if let sessionId = sessionId, mergedAttributes["session.id"] == nil {

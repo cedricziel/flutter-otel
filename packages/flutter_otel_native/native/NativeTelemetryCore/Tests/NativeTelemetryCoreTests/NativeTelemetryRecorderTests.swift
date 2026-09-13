@@ -83,6 +83,23 @@ final class NativeTelemetryRecorderTests: XCTestCase {
         XCTAssertNil(json["parentSpanId"])
     }
 
+    func testExplicitParentSpanIdIsDroppedWithoutATraceIdOrInheritedContext() throws {
+        let ids = recorder.recordSpan(
+            name: "op",
+            start: Date(),
+            end: Date(),
+            parentSpanId: "00f067aa0ba902b7"
+        )
+
+        let json = try decodeLastRecord()
+        XCTAssertEqual(json["traceId"] as? String, ids.traceId)
+        XCTAssertNotEqual(ids.traceId, "")
+        XCTAssertNil(
+            json["parentSpanId"],
+            "a freshly generated trace can't already contain the given parent span"
+        )
+    }
+
     func testRecordSpanEncodesEventsAndStatus() throws {
         let start = Date(timeIntervalSince1970: 1_700_000_000)
         let end = start.addingTimeInterval(0.05)

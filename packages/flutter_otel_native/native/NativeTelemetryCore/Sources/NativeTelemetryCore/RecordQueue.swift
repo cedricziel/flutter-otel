@@ -31,7 +31,15 @@ public final class RecordQueue {
                 return
             }
 
-            var lines = readLinesLocked()
+            guard case let .success(existingLines) = readLinesLocked() else {
+                // The existing queue file couldn't be read (as opposed to
+                // simply not existing yet). Abandon this append rather than
+                // rewrite the file with just the new line, which would
+                // silently truncate away whatever was already queued.
+                return
+            }
+
+            var lines = existingLines
             lines.append(line)
             if lines.count > maxRecords {
                 let overflow = lines.count - maxRecords
@@ -43,29 +51,57 @@ public final class RecordQueue {
     }
 
     /// Returns every queued line and the drop count since the previous
-    /// drain, then clears both.
+    /// drain, then clears both — but only resets the drop counter once the
+    /// clearing write actually succeeds, so a failed clear doesn't also
+    /// erase the record that a drop occurred.
     public func drain() -> DrainResult {
         ioQueue.sync {
-            let lines = readLinesLocked()
-            writeLinesLocked([])
+            let lines: [String]
+            switch readLinesLocked() {
+            case let .success(readLines):
+                lines = readLines
+            case .failure:
+                lines = []
+            }
             let dropped = droppedSinceLastDrain
-            droppedSinceLastDrain = 0
+            if writeLinesLocked([]) {
+                droppedSinceLastDrain = 0
+            }
             return DrainResult(lines: lines, droppedSinceLastDrain: dropped)
         }
     }
 
-    private func readLinesLocked() -> [String] {
-        guard let data = try? Data(contentsOf: fileURL),
-              let contents = String(data: data, encoding: .utf8),
-              !contents.isEmpty
-        else {
-            return []
+    /// Reads the queue file's lines. A missing file is treated as an empty
+    /// queue (`.success([])`); any other read failure (permissions, a
+    /// corrupt or undecodable file, and similar) is reported as `.failure`
+    /// so callers can tell it apart from "nothing queued yet".
+    private func readLinesLocked() -> Result<[String], Error> {
+        do {
+            let data = try Data(contentsOf: fileURL)
+            guard let contents = String(data: data, encoding: .utf8) else {
+                return .failure(CocoaError(.fileReadCorruptFile))
+            }
+            if contents.isEmpty {
+                return .success([])
+            }
+            return .success(contents.split(separator: "\n", omittingEmptySubsequences: true).map(String.init))
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return .success([])
+        } catch {
+            return .failure(error)
         }
-        return contents.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
     }
 
-    private func writeLinesLocked(_ lines: [String]) {
+    /// Writes [lines] to the queue file, returning whether the write
+    /// succeeded.
+    @discardableResult
+    private func writeLinesLocked(_ lines: [String]) -> Bool {
         let contents = lines.isEmpty ? "" : lines.joined(separator: "\n") + "\n"
-        try? contents.write(to: fileURL, atomically: true, encoding: .utf8)
+        do {
+            try contents.write(to: fileURL, atomically: true, encoding: .utf8)
+            return true
+        } catch {
+            return false
+        }
     }
 }

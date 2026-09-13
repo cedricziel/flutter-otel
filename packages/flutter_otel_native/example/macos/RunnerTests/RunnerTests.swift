@@ -12,19 +12,19 @@ import XCTest
 // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
 
 class RunnerTests: XCTestCase {
+    func testDrainQueue() {
+        let plugin = FlutterOtelNativePlugin()
 
-  func testGetPlatformVersion() {
-    let plugin = FlutterOtelNativePlugin()
+        let call = FlutterMethodCall(methodName: "drainQueue", arguments: [])
 
-    let call = FlutterMethodCall(methodName: "getPlatformVersion", arguments: [])
-
-    let resultExpectation = expectation(description: "result block must be called.")
-    plugin.handle(call) { result in
-      XCTAssertEqual(result as! String,
-                     "macOS " + ProcessInfo.processInfo.operatingSystemVersionString)
-      resultExpectation.fulfill()
+        let resultExpectation = expectation(description: "result block must be called.")
+        plugin.handle(call) { result in
+            let payload = result as? [String: Any]
+            XCTAssertNotNil(payload)
+            XCTAssertNotNil(payload?["records"] as? [String])
+            XCTAssertNotNil(payload?["droppedSinceLastDrain"] as? Int)
+            resultExpectation.fulfill()
+        }
+        waitForExpectations(timeout: 1)
     }
-    waitForExpectations(timeout: 1)
-  }
-
 }

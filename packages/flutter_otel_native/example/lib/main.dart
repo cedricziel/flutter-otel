@@ -24,17 +24,24 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _drain() async {
-    final result = await _bridge.drainAndForward(
-      tracerProvider: _CountingTracerProvider(),
-      loggerProvider: _CountingLoggerProvider(),
-    );
-    if (!mounted) return;
-    setState(() {
-      _status =
-          'ingested: ${result.recordsIngested}, '
-          'skipped: ${result.recordsSkipped}, '
-          'dropped: ${result.recordsDropped}';
-    });
+    try {
+      final result = await _bridge.drainAndForward(
+        tracerProvider: _CountingTracerProvider(),
+        loggerProvider: _CountingLoggerProvider(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _status =
+            'ingested: ${result.recordsIngested}, '
+            'skipped: ${result.recordsSkipped}, '
+            'dropped: ${result.recordsDropped}';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _status = 'Drain failed: $error';
+      });
+    }
   }
 
   @override

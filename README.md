@@ -16,11 +16,15 @@ can slot in later without reshaping this code. W3C Trace Context
 ## Platform support
 
 **iOS and macOS are the currently supported and tested platforms** (this
-matches the first consuming app). Nothing in the implementation is
-iOS/macOS-specific, though — there are no platform channels and no native
+matches the first consuming app). The Dart-only packages
+(`flutter_otel_api`, `flutter_otel_sdk`, `flutter_otel_exporter_otlp_http`,
+`flutter_otel`, `flutter_otel_instrumentation_dio`) have nothing
+iOS/macOS-specific in them — there are no platform channels and no native
 code, only `http`, `uuid`, and Flutter's cross-platform
 `WidgetsBindingObserver` — so Android, web, Windows, and Linux should work
-but are not yet verified.
+but are not yet verified. `flutter_otel_native` is the one exception: it's
+iOS/macOS-only by design, backed by native Swift and a `MethodChannel`
+bridge (see below).
 
 ## Workspace layout
 

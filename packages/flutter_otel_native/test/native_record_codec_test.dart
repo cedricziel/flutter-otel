@@ -97,5 +97,46 @@ void main() {
     test('returns null when a required field is missing', () {
       expect(decodeNativeRecordLine('{"kind":"span","name":"x"}'), isNull);
     });
+
+    test('returns null for a span with an all-zero traceId', () {
+      const line = '{"kind":"span","name":"x",'
+          '"traceId":"00000000000000000000000000000000",'
+          '"spanId":"00f067aa0ba902b7","parentSpanId":null,'
+          '"spanKind":"internal","startTimeUnixNano":"1700000000000000000",'
+          '"endTimeUnixNano":"1700000000050000000","attributes":{},'
+          '"events":[],"statusCode":"unset"}';
+
+      expect(decodeNativeRecordLine(line), isNull);
+    });
+
+    test('returns null for a span with a short spanId', () {
+      const line = '{"kind":"span","name":"x",'
+          '"traceId":"4bf92f3577b34da6a3ce929d0e0e4736",'
+          '"spanId":"abc123","parentSpanId":null,'
+          '"spanKind":"internal","startTimeUnixNano":"1700000000000000000",'
+          '"endTimeUnixNano":"1700000000050000000","attributes":{},'
+          '"events":[],"statusCode":"unset"}';
+
+      expect(decodeNativeRecordLine(line), isNull);
+    });
+
+    test('returns null for a span with an invalid parentSpanId', () {
+      const line = '{"kind":"span","name":"x",'
+          '"traceId":"4bf92f3577b34da6a3ce929d0e0e4736",'
+          '"spanId":"00f067aa0ba902b7","parentSpanId":"0000000000000000",'
+          '"spanKind":"internal","startTimeUnixNano":"1700000000000000000",'
+          '"endTimeUnixNano":"1700000000050000000","attributes":{},'
+          '"events":[],"statusCode":"unset"}';
+
+      expect(decodeNativeRecordLine(line), isNull);
+    });
+
+    test('returns null for a log with a traceId but no spanId', () {
+      const line = '{"kind":"log","timeUnixNano":"1700000000010000000",'
+          '"severity":"info","body":"hello","attributes":{},'
+          '"traceId":"4bf92f3577b34da6a3ce929d0e0e4736"}';
+
+      expect(decodeNativeRecordLine(line), isNull);
+    });
   });
 }

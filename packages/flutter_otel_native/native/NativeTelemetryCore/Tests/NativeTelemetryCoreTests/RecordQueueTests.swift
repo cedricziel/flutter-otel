@@ -63,4 +63,59 @@ final class RecordQueueTests: XCTestCase {
 
         XCTAssertEqual(result.droppedSinceLastDrain, 0)
     }
+
+    func testAppendAbandonsTheWriteWhenTheExistingQueueFileCannotBeRead() throws {
+        let queue = RecordQueue(fileURL: fileURL, maxRecords: 10)
+        queue.append(["kind": "log", "body": "original"])
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: fileURL.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
+        }
+
+        // The file can't be read while it's unreadable, so this append must
+        // be abandoned rather than rewriting the file with just this line.
+        queue.append(["kind": "log", "body": "should be dropped"])
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
+        let result = queue.drain()
+
+        XCTAssertEqual(result.lines.count, 1)
+        XCTAssertTrue(result.lines[0].contains("original"))
+    }
+
+    func testDrainKeepsTheDropCounterAndRecordsWhenClearingFails() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("record_queue_write_fail_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let restrictedFileURL = dir.appendingPathComponent("queue.ndjson")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+
+        let queue = RecordQueue(fileURL: restrictedFileURL, maxRecords: 1)
+        queue.append(["kind": "log", "body": "one"])
+        queue.append(["kind": "log", "body": "two"])
+
+        // Remove write permission on the directory so the atomic clear
+        // write inside drain() fails.
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+
+        let firstDrain = queue.drain()
+        XCTAssertEqual(firstDrain.lines.count, 1)
+        XCTAssertEqual(firstDrain.droppedSinceLastDrain, 1)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        let secondDrain = queue.drain()
+        XCTAssertEqual(
+            secondDrain.droppedSinceLastDrain, 1,
+            "the drop count should survive a failed clear rather than being reset"
+        )
+        XCTAssertEqual(
+            secondDrain.lines.count, 1,
+            "the record should still be there since the earlier clear never took effect"
+        )
+    }
 }
