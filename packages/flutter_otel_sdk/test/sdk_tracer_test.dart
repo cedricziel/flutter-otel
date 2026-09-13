@@ -68,6 +68,50 @@ void main() {
     });
   });
 
+  group('SdkTracer links', () {
+    test('startSpan carries links through to the exported SpanData', () async {
+      const linkedContext = SpanContext(
+        traceId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        spanId: 'bbbbbbbbbbbbbbbb',
+      );
+      final span = tracer.startSpan(
+        'op',
+        links: [
+          SpanLink(linkedContext, attributes: {'ws.connection.id': 'c1'}),
+        ],
+      );
+      span.end();
+      await processor.forceFlush();
+
+      final data = exporter.allSpans.single;
+      expect(data.links, hasLength(1));
+      expect(data.links.single.context, linkedContext);
+      expect(data.links.single.attributes, {'ws.connection.id': 'c1'});
+    });
+
+    test('startSpan defaults to no links', () async {
+      final span = tracer.startSpan('op');
+      span.end();
+      await processor.forceFlush();
+
+      expect(exporter.allSpans.single.links, isEmpty);
+    });
+
+    test('a linked root span is not nested under the linked span', () {
+      const linkedContext = SpanContext(
+        traceId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        spanId: 'bbbbbbbbbbbbbbbb',
+      );
+      final span = tracer.startSpan(
+        'op',
+        links: [SpanLink(linkedContext)],
+      ) as SdkSpan;
+
+      expect(span.parentSpanId, isNull);
+      expect(span.spanContext.traceId, isNot(linkedContext.traceId));
+    });
+  });
+
   group('SdkTracer.startActiveSpan', () {
     test('makes the span Span.current for the duration of body', () async {
       Span? observed;

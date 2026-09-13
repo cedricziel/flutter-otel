@@ -77,6 +77,17 @@ void main() {
       span.end();
     });
 
+    test('startSpan accepts links without error', () {
+      final tracer = const NoopTracer('test');
+      final linked = tracer.startSpan('linked-to');
+      final span = tracer.startSpan(
+        'op',
+        links: [SpanLink(linked.spanContext)],
+      );
+
+      expect(span.name, 'op');
+    });
+
     test(
         'startActiveSpan makes the span current for body and returns its '
         'result', () async {

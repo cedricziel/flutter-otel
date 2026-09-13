@@ -123,10 +123,26 @@ class OtlpHttpSpanExporter implements SpanExporter {
               'attributes': encodeAttributes(event.attributes),
             },
         ],
+        if (span.links.isNotEmpty)
+          'links': [
+            for (final link in span.links) _encodeLink(link),
+          ],
         'status': {
           'code': _encodeStatusCode(span.statusCode),
           if (span.statusDescription != null) 'message': span.statusDescription,
         },
+      };
+
+  /// Sets the OTLP `flags` bits per the W3C Trace Context spec: bit 8
+  /// (`0x100`) marks that this link's `isRemote` was known at all (always
+  /// true here — [SpanContext.isRemote] defaults to `false` rather than
+  /// being optional), and bit 9 (`0x200`) mirrors [SpanContext.isRemote]
+  /// itself.
+  Map<String, Object?> _encodeLink(SpanLink link) => {
+        'traceId': link.context.traceId,
+        'spanId': link.context.spanId,
+        'attributes': encodeAttributes(link.attributes),
+        'flags': link.context.isRemote ? 0x300 : 0x100,
       };
 
   /// Maps [SpanKind] 1:1 to OTLP's `Span.SpanKind` enum

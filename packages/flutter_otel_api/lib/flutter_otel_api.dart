@@ -27,6 +27,7 @@ export 'src/trace/span_data.dart';
 export 'src/trace/span_event.dart';
 export 'src/trace/span_exporter.dart';
 export 'src/trace/span_kind.dart';
+export 'src/trace/span_link.dart';
 export 'src/trace/span_processor.dart';
 export 'src/trace/status_code.dart';
 export 'src/trace/tracer.dart';

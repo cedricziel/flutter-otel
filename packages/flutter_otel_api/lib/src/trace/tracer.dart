@@ -1,6 +1,7 @@
 import 'span.dart';
 import 'span_context.dart';
 import 'span_kind.dart';
+import 'span_link.dart';
 import 'status_code.dart';
 
 /// Creates and starts [Span]s for one instrumentation scope.
@@ -14,11 +15,17 @@ abstract class Tracer {
   /// [parentContext], then the ambient [Span.current], then no parent (a
   /// root span). The returned span is not made [Span.current] — use
   /// [startActiveSpan] for that.
+  ///
+  /// [links] point this span at other causally related spans (typically in
+  /// a different trace) without making them its parent — e.g. a root span
+  /// started for one message on a long-lived connection, linked back to
+  /// that connection's span instead of nesting under it.
   Span startSpan(
     String name, {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
     SpanContext? parentContext,
+    List<SpanLink> links = const [],
   });
 
   /// Starts a span, makes it [Span.current] for the duration of [body],
@@ -30,6 +37,7 @@ abstract class Tracer {
     Future<T> Function(Span span) body, {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
+    List<SpanLink> links = const [],
   });
 }
 
@@ -49,6 +57,7 @@ class NoopTracer implements Tracer {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
     SpanContext? parentContext,
+    List<SpanLink> links = const [],
   }) =>
       _NoopSpan(name);
 
@@ -58,6 +67,7 @@ class NoopTracer implements Tracer {
     Future<T> Function(Span span) body, {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
+    List<SpanLink> links = const [],
   }) {
     final span = _NoopSpan(name);
     return Span.runWithSpan(span, () => body(span));

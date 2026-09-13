@@ -172,5 +172,29 @@ void main() {
 
       expect(exporter.allSpans.single.endTime, endTime);
     });
+
+    test(
+        'mutating the links list passed to the constructor afterwards does '
+        'not change the exported span', () async {
+      final mutableLinks = [
+        SpanLink(
+          const SpanContext(
+            traceId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            spanId: 'bbbbbbbbbbbbbbbb',
+          ),
+        ),
+      ];
+      final span = SdkSpan(
+        name: 'op',
+        kind: SpanKind.internal,
+        processor: processor,
+        links: mutableLinks,
+      );
+      mutableLinks.clear();
+      span.end();
+      await processor.forceFlush();
+
+      expect(exporter.allSpans.single.links, hasLength(1));
+    });
   });
 }
