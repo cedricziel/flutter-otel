@@ -37,7 +37,7 @@ class SdkSpan implements Span {
         _processor = processor,
         _startTime = startTime ?? DateTime.now(),
         _attributes = {...?attributes},
-        _links = links,
+        _links = List.unmodifiable(links),
         spanContext = SpanContext(
           traceId: parentContext?.traceId ?? generateTraceId(),
           spanId: generateSpanId(),

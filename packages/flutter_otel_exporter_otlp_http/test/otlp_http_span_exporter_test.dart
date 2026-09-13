@@ -237,8 +237,40 @@ void main() {
               'value': {'stringValue': 'c1'},
             },
           ],
+          'flags': 0x100,
         },
       ]);
+    });
+
+    test('encodes a remote link with the is-remote flag bit set', () async {
+      final exporter = OtlpHttpSpanExporter(
+        endpoint: Uri.parse('https://collector.example.com/v1/traces'),
+        httpClient: buildClient(200),
+      );
+      await exporter.export(
+        [
+          buildSpan(
+            links: [
+              SpanLink(
+                const SpanContext(
+                  traceId: 'dddddddddddddddddddddddddddddddd',
+                  spanId: 'eeeeeeeeeeeeeeee',
+                  isRemote: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+        OTelResource(serviceName: 'trueapp'),
+      );
+
+      final decoded = jsonDecode(capturedBody) as Map<String, dynamic>;
+      final span = ((decoded['resourceSpans'] as List).single
+              as Map<String, dynamic>)['scopeSpans']
+          .first['spans']
+          .first as Map<String, dynamic>;
+      final link = (span['links'] as List).single as Map<String, dynamic>;
+      expect(link['flags'], 0x300);
     });
 
     test('omits the links field entirely when there are none', () async {
