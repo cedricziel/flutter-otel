@@ -5,16 +5,17 @@ on:
   pull_request:
 
 env:
-  FLUTTER_VERSION: '3.47.2'
+  FLUTTER_VERSION: "3.47.2"
 
 permissions:
   contents: read
 
 jobs:
   ci:
-    # A standard Linux runner is sufficient: nothing in this repo touches
-    # platform channels or native code, so no macOS/Xcode setup is needed
-    # here even though iOS/macOS are the primary supported targets.
+    # A standard Linux runner is sufficient here: flutter_otel_native's
+    # Dart-side tests don't need a real device/simulator. The native Swift
+    # code and the example app build are covered by the separate
+    # macos-native-tests job below instead.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +67,17 @@ jobs:
         working-directory: packages/flutter_otel_sdk
         run: flutter test
 
+      # --- flutter_otel_native: depends on Flutter (MethodChannel). Only
+      # the Dart side is tested here — the Swift side has no Flutter
+      # dependency and is tested by the macos-native-tests job below,
+      # which needs no Xcode/iOS toolchain setup at all as a result.
+      - name: Analyze flutter_otel_native
+        working-directory: packages/flutter_otel_native
+        run: flutter analyze
+      - name: Test flutter_otel_native
+        working-directory: packages/flutter_otel_native
+        run: flutter test
+
       # --- flutter_otel: umbrella package, depends on Flutter ---
       - name: Analyze flutter_otel
         working-directory: packages/flutter_otel
@@ -73,3 +85,31 @@ jobs:
       - name: Test flutter_otel
         working-directory: packages/flutter_otel
         run: flutter test
+
+  macos-native-tests:
+    # NativeTelemetryCore has no Flutter dependency, so swift test only
+    # needs the Swift toolchain macos-latest ships with. Building the
+    # example app below exercises the Flutter/Xcode side (the plugin and
+    # its podspecs) that swift test alone does not touch.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: swift test (NativeTelemetryCore)
+        working-directory: packages/flutter_otel_native/native/NativeTelemetryCore
+        run: swift test
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: flutter pub get (example)
+        working-directory: packages/flutter_otel_native/example
+        run: flutter pub get
+
+      - name: Build macOS example app (exercises the podspec/Package.swift wiring)
+        working-directory: packages/flutter_otel_native/example
+        run: flutter build macos --debug

@@ -16,11 +16,15 @@ can slot in later without reshaping this code. W3C Trace Context
 ## Platform support
 
 **iOS and macOS are the currently supported and tested platforms** (this
-matches the first consuming app). Nothing in the implementation is
-iOS/macOS-specific, though — there are no platform channels and no native
+matches the first consuming app). The Dart-only packages
+(`flutter_otel_api`, `flutter_otel_sdk`, `flutter_otel_exporter_otlp_http`,
+`flutter_otel`, `flutter_otel_instrumentation_dio`) have nothing
+iOS/macOS-specific in them — there are no platform channels and no native
 code, only `http`, `uuid`, and Flutter's cross-platform
 `WidgetsBindingObserver` — so Android, web, Windows, and Linux should work
-but are not yet verified.
+but are not yet verified. `flutter_otel_native` is the one exception: it's
+iOS/macOS-only by design, backed by native Swift and a `MethodChannel`
+bridge (see below).
 
 ## Workspace layout
 
@@ -49,6 +53,11 @@ flutter-otel/
     flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
                                          # including CLIENT spans + traceparent
                                          # propagation when a Tracer is given
+    flutter_otel_native/                # native (Swift) telemetry foundation
+                                         # for iOS/macOS: an on-disk queue +
+                                         # MethodChannel bridge so native code
+                                         # can record spans/logs before or
+                                         # without a running Dart isolate
 ```
 
 Three packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`, and
@@ -66,6 +75,7 @@ example specific to it:
 - [`packages/flutter_otel_exporter_otlp_http`](packages/flutter_otel_exporter_otlp_http/README.md)
 - [`packages/flutter_otel`](packages/flutter_otel/README.md)
 - [`packages/flutter_otel_instrumentation_dio`](packages/flutter_otel_instrumentation_dio/README.md)
+- [`packages/flutter_otel_native`](packages/flutter_otel_native/README.md)
 
 ## Quick start
 
@@ -186,6 +196,11 @@ README for details.
 - **`tracestate` propagation** — `formatTraceparent`/`parseTraceparent`
   handle the W3C `traceparent` header only; this SDK has no vendor-specific
   state to carry in `tracestate` and doesn't round-trip anyone else's.
+- **Native (Swift) instrumentation beyond the foundation** —
+  `flutter_otel_native` provides the recording/queuing/bridging plumbing
+  only; cold-start timing, native crash capture, background-task tracing,
+  and native networking instrumentation are each a separate, later spec
+  built on top of it (see `docs/superpowers/specs/` for the design).
 
 ## Development
 
