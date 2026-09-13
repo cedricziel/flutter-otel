@@ -28,9 +28,9 @@ void main() {
   void mockDrainResponse(Map<String, Object?> response) {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-          expect(call.method, 'drainQueue');
-          return response;
-        });
+      expect(call.method, 'drainQueue');
+      return response;
+    });
   }
 
   test('ingests a mix of decodable span and log lines', () async {
@@ -105,9 +105,9 @@ void main() {
       MethodCall? invoked;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
-            invoked = call;
-            return null;
-          });
+        invoked = call;
+        return null;
+      });
 
       await bridge.setSessionId('session-123');
 
@@ -121,9 +121,9 @@ void main() {
         MethodCall? invoked;
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (call) async {
-              invoked = call;
-              return null;
-            });
+          invoked = call;
+          return null;
+        });
 
         await bridge.setCurrentTraceContext(
           const SpanContext(
@@ -146,9 +146,9 @@ void main() {
         MethodCall? invoked;
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (call) async {
-              invoked = call;
-              return null;
-            });
+          invoked = call;
+          return null;
+        });
 
         await bridge.clearCurrentTraceContext();
 
@@ -162,9 +162,9 @@ void main() {
       MethodCall? invoked;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
-            invoked = call;
-            return 'testflight';
-          });
+        invoked = call;
+        return 'testflight';
+      });
 
       final result = await bridge.distributionEnvironment();
 
@@ -186,9 +186,9 @@ void main() {
       () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
-              channel,
-              (call) async => throw PlatformException(code: 'unavailable'),
-            );
+          channel,
+          (call) async => throw PlatformException(code: 'unavailable'),
+        );
 
         final result = await bridge.distributionEnvironment();
 
