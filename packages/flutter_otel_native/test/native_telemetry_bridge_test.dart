@@ -172,17 +172,17 @@ void main() {
       expect(result, 'testflight');
     });
 
-    test('returns "development" when native returns null', () async {
+    test('returns "unknown" when native returns null', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async => null);
 
       final result = await bridge.distributionEnvironment();
 
-      expect(result, 'development');
+      expect(result, 'unknown');
     });
 
     test(
-      'returns "development" rather than throwing when the channel fails',
+      'returns "unknown" rather than throwing when the channel fails',
       () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
@@ -192,7 +192,7 @@ void main() {
 
         final result = await bridge.distributionEnvironment();
 
-        expect(result, 'development');
+        expect(result, 'unknown');
       },
     );
   });

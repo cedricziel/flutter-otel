@@ -2,10 +2,10 @@
 import XCTest
 
 final class DistributionEnvironmentTests: XCTestCase {
-    func testReturnsDevelopmentWhenNoReceiptURL() {
+    func testReturnsUnknownWhenNoReceiptURL() {
         let result = DistributionEnvironment.current(receiptURL: nil)
 
-        XCTAssertEqual(result, "development")
+        XCTAssertEqual(result, "unknown")
     }
 
     func testReturnsTestflightForASandboxReceiptRegardlessOfFileExistence() {
@@ -30,7 +30,7 @@ final class DistributionEnvironmentTests: XCTestCase {
         XCTAssertEqual(result, "production")
     }
 
-    func testReturnsDevelopmentWhenReceiptURLIsPresentButTheFileIsMissing() {
+    func testReturnsUnknownWhenReceiptURLIsPresentButTheFileIsMissing() {
         let url = URL(fileURLWithPath: "/private/var/mobile/receipt")
 
         let result = DistributionEnvironment.current(
@@ -38,6 +38,6 @@ final class DistributionEnvironmentTests: XCTestCase {
             fileExists: { _ in false }
         )
 
-        XCTAssertEqual(result, "development")
+        XCTAssertEqual(result, "unknown")
     }
 }

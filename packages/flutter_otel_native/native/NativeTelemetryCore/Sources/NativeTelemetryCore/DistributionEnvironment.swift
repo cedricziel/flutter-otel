@@ -9,8 +9,14 @@ import Foundation
 ///   `sandboxReceipt` (TestFlight and other sandbox-signed distributions).
 /// - `"production"`: a receipt URL exists, isn't a sandbox receipt, and the
 ///   file is actually present on disk (a real App Store install).
-/// - `"development"`: no receipt URL, or the file doesn't exist (an Xcode
-///   debug/direct-install build never gets a receipt at all).
+/// - `"unknown"`: no receipt URL, or the file doesn't exist. This is
+///   deliberately not `"development"`: `appStoreReceiptURL` can be nil (or
+///   the file not yet written) on a fresh TestFlight install too, not only
+///   on an Xcode debug/direct-install build — native has no way to tell
+///   those two apart, so it reports the honest "don't know" rather than
+///   guessing. Callers that want a build-mode-based default (e.g. treating
+///   an unknown result as "development" in a debug build) apply that on
+///   top of this.
 ///
 /// `appStoreReceiptURL` was deprecated in macOS 15/iOS 18 in favor of
 /// StoreKit 2's `AppTransaction` — deliberately not migrated here: that API
@@ -23,10 +29,10 @@ public enum DistributionEnvironment {
         receiptURL: URL? = Bundle.main.appStoreReceiptURL,
         fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
     ) -> String {
-        guard let receiptURL else { return "development" }
+        guard let receiptURL else { return "unknown" }
         if receiptURL.lastPathComponent == "sandboxReceipt" {
             return "testflight"
         }
-        return fileExists(receiptURL.path) ? "production" : "development"
+        return fileExists(receiptURL.path) ? "production" : "unknown"
     }
 }
