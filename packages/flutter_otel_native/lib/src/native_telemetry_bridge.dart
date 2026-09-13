@@ -84,4 +84,20 @@ class NativeTelemetryBridge {
   /// Clears whatever [setCurrentTraceContext] last set.
   Future<void> clearCurrentTraceContext() =>
       _channel.invokeMethod('clearCurrentTraceContext');
+
+  /// Which channel distributed the running build — `"testflight"`,
+  /// `"production"`, or `"unknown"` — per native's check of the app's
+  /// StoreKit receipt. Never throws: a missing platform implementation
+  /// (e.g. this plugin not registered, or a platform other than
+  /// iOS/macOS) resolves to `"unknown"`, since telemetry enrichment must
+  /// never be able to break the app.
+  Future<String> distributionEnvironment() async {
+    try {
+      final result =
+          await _channel.invokeMethod<String>('distributionEnvironment');
+      return result ?? 'unknown';
+    } catch (_) {
+      return 'unknown';
+    }
+  }
 }
