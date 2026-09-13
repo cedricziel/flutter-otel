@@ -123,10 +123,20 @@ class OtlpHttpSpanExporter implements SpanExporter {
               'attributes': encodeAttributes(event.attributes),
             },
         ],
+        if (span.links.isNotEmpty)
+          'links': [
+            for (final link in span.links) _encodeLink(link),
+          ],
         'status': {
           'code': _encodeStatusCode(span.statusCode),
           if (span.statusDescription != null) 'message': span.statusDescription,
         },
+      };
+
+  Map<String, Object?> _encodeLink(SpanLink link) => {
+        'traceId': link.context.traceId,
+        'spanId': link.context.spanId,
+        'attributes': encodeAttributes(link.attributes),
       };
 
   /// Maps [SpanKind] 1:1 to OTLP's `Span.SpanKind` enum

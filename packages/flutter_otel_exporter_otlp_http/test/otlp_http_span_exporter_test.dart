@@ -63,6 +63,7 @@ void main() {
       String? statusDescription,
       Map<String, Object?> attributes = const {},
       List<SpanEvent> events = const [],
+      List<SpanLink> links = const [],
       String scopeName = 'my.tracer',
       String? scopeVersion = '2.0.0',
     }) =>
@@ -78,6 +79,7 @@ void main() {
           endTime: DateTime.utc(2024, 1, 1, 0, 0, 1),
           attributes: attributes,
           events: events,
+          links: links,
           statusCode: statusCode,
           statusDescription: statusDescription,
           scopeName: scopeName,
@@ -196,6 +198,65 @@ void main() {
           .first['spans']
           .first as Map<String, dynamic>;
       expect(span.containsKey('parentSpanId'), isFalse);
+    });
+
+    test('encodes links as traceId/spanId/attributes triples', () async {
+      final exporter = OtlpHttpSpanExporter(
+        endpoint: Uri.parse('https://collector.example.com/v1/traces'),
+        httpClient: buildClient(200),
+      );
+      await exporter.export(
+        [
+          buildSpan(
+            links: [
+              SpanLink(
+                const SpanContext(
+                  traceId: 'dddddddddddddddddddddddddddddddd',
+                  spanId: 'eeeeeeeeeeeeeeee',
+                ),
+                attributes: {'ws.connection.id': 'c1'},
+              ),
+            ],
+          ),
+        ],
+        OTelResource(serviceName: 'trueapp'),
+      );
+
+      final decoded = jsonDecode(capturedBody) as Map<String, dynamic>;
+      final span = ((decoded['resourceSpans'] as List).single
+              as Map<String, dynamic>)['scopeSpans']
+          .first['spans']
+          .first as Map<String, dynamic>;
+      expect(span['links'], [
+        {
+          'traceId': 'dddddddddddddddddddddddddddddddd',
+          'spanId': 'eeeeeeeeeeeeeeee',
+          'attributes': [
+            {
+              'key': 'ws.connection.id',
+              'value': {'stringValue': 'c1'},
+            },
+          ],
+        },
+      ]);
+    });
+
+    test('omits the links field entirely when there are none', () async {
+      final exporter = OtlpHttpSpanExporter(
+        endpoint: Uri.parse('https://collector.example.com/v1/traces'),
+        httpClient: buildClient(200),
+      );
+      await exporter.export(
+        [buildSpan()],
+        OTelResource(serviceName: 'trueapp'),
+      );
+
+      final decoded = jsonDecode(capturedBody) as Map<String, dynamic>;
+      final span = ((decoded['resourceSpans'] as List).single
+              as Map<String, dynamic>)['scopeSpans']
+          .first['spans']
+          .first as Map<String, dynamic>;
+      expect(span.containsKey('links'), isFalse);
     });
 
     test('omits status message when statusDescription is null', () async {

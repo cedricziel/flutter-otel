@@ -30,12 +30,14 @@ class SdkSpan implements Span {
     required SpanProcessor processor,
     DateTime? startTime,
     Map<String, Object?>? attributes,
+    List<SpanLink> links = const [],
     this.scopeName = defaultInstrumentationScopeName,
     this.scopeVersion,
   })  : _kind = kind,
         _processor = processor,
         _startTime = startTime ?? DateTime.now(),
         _attributes = {...?attributes},
+        _links = links,
         spanContext = SpanContext(
           traceId: parentContext?.traceId ?? generateTraceId(),
           spanId: generateSpanId(),
@@ -60,6 +62,7 @@ class SdkSpan implements Span {
   final SpanProcessor _processor;
   final DateTime _startTime;
   final Map<String, Object?> _attributes;
+  final List<SpanLink> _links;
   final List<SpanEvent> _events = [];
   StatusCode _statusCode = StatusCode.unset;
   String? _statusDescription;
@@ -134,6 +137,7 @@ class SdkSpan implements Span {
       endTime: endTime ?? DateTime.now(),
       attributes: _attributes,
       events: _events,
+      links: _links,
       statusCode: _statusCode,
       statusDescription: _statusDescription,
       scopeName: scopeName,

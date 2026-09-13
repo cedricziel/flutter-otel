@@ -28,6 +28,7 @@ class SdkTracer implements Tracer {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
     SpanContext? parentContext,
+    List<SpanLink> links = const [],
   }) {
     final resolvedParent = parentContext ?? Span.current?.spanContext;
     return SdkSpan(
@@ -37,6 +38,7 @@ class SdkTracer implements Tracer {
       parentSpanId: resolvedParent?.spanId,
       processor: _processor,
       attributes: attributes,
+      links: links,
       scopeName: this.name,
       scopeVersion: version,
     );
@@ -48,8 +50,10 @@ class SdkTracer implements Tracer {
     Future<T> Function(Span span) body, {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
+    List<SpanLink> links = const [],
   }) async {
-    final span = startSpan(name, kind: kind, attributes: attributes);
+    final span =
+        startSpan(name, kind: kind, attributes: attributes, links: links);
     try {
       return await Span.runWithSpan(span, () => body(span));
     } catch (e, stackTrace) {

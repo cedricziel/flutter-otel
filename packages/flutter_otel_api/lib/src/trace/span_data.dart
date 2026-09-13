@@ -2,6 +2,7 @@ import '../logs/log_record.dart' show defaultInstrumentationScopeName;
 import 'span_context.dart';
 import 'span_event.dart';
 import 'span_kind.dart';
+import 'span_link.dart';
 import 'status_code.dart';
 
 /// Immutable snapshot of a finished span, handed to exporters — analogous
@@ -16,12 +17,14 @@ class SpanData {
     required this.endTime,
     Map<String, Object?> attributes = const {},
     List<SpanEvent> events = const [],
+    List<SpanLink> links = const [],
     this.statusCode = StatusCode.unset,
     this.statusDescription,
     this.scopeName = defaultInstrumentationScopeName,
     this.scopeVersion,
   })  : attributes = Map.unmodifiable(attributes),
-        events = List.unmodifiable(events);
+        events = List.unmodifiable(events),
+        links = List.unmodifiable(links);
 
   /// The span's name.
   final String name;
@@ -47,6 +50,10 @@ class SpanData {
 
   /// Timestamped events recorded during the span's lifetime. Read-only.
   final List<SpanEvent> events;
+
+  /// Links to other causally related spans, typically in a different
+  /// trace. Read-only.
+  final List<SpanLink> links;
 
   /// The final status of the operation this span represents.
   final StatusCode statusCode;
