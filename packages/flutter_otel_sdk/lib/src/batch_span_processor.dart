@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:meta/meta.dart';
 
 /// A [SpanProcessor] that buffers finished spans and exports them in
 /// batches, either when [maxExportBatchSize] is reached or every
@@ -10,7 +11,7 @@ import 'package:flutter_otel_api/flutter_otel_api.dart';
 /// spans beyond [maxQueueSize] are dropped (oldest first) to bound memory
 /// use.
 ///
-/// Export failures are swallowed and reported via [debugPrint]; they never
+/// Export failures are swallowed and reported to [stderr]; they never
 /// propagate into application code.
 class BatchSpanProcessor implements SpanProcessor {
   BatchSpanProcessor(
@@ -92,10 +93,14 @@ class BatchSpanProcessor implements SpanProcessor {
       try {
         final result = await exporter.export(batch, resource);
         if (!result.success) {
-          debugPrint('flutter_otel: batch span export failed: ${result.error}');
+          stderr.writeln(
+            'flutter_otel: batch span export failed: ${result.error}',
+          );
         }
       } catch (e, stackTrace) {
-        debugPrint('flutter_otel: batch span export threw: $e\n$stackTrace');
+        stderr.writeln(
+          'flutter_otel: batch span export threw: $e\n$stackTrace',
+        );
       }
     }
   }

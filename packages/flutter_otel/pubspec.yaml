@@ -8,7 +8,7 @@ homepage: https://github.com/cedricziel/flutter-otel
 
 environment:
   sdk: ^3.6.0
-  flutter: '>=3.27.0'
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
@@ -16,11 +16,12 @@ dependencies:
   flutter_otel_api: ^0.1.0
   flutter_otel_exporter_otlp_http: ^0.1.0
   flutter_otel_sdk: ^0.1.0
+  http: ^1.2.0
+  uuid: ^4.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  http: ^1.2.0
 
 resolution: workspace

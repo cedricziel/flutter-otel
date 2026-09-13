@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_otel_api/flutter_otel_api.dart';
 
 /// A [LogRecordProcessor] that exports every record immediately, one at a
@@ -27,10 +27,10 @@ class SimpleLogRecordProcessor implements LogRecordProcessor {
     try {
       final result = await exporter.export(records, resource);
       if (!result.success) {
-        debugPrint('flutter_otel: log export failed: ${result.error}');
+        stderr.writeln('flutter_otel: log export failed: ${result.error}');
       }
     } catch (e, stackTrace) {
-      debugPrint('flutter_otel: log export threw: $e\n$stackTrace');
+      stderr.writeln('flutter_otel: log export threw: $e\n$stackTrace');
     }
   }
 

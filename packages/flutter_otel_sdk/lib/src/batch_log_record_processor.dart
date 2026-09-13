@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:meta/meta.dart';
 
 /// A [LogRecordProcessor] that buffers records and exports them in batches,
 /// either when [maxExportBatchSize] is reached or every [scheduledDelay] on
 /// a periodic timer — whichever comes first. Buffered records beyond
 /// [maxQueueSize] are dropped (oldest first) to bound memory use.
 ///
-/// Export failures are swallowed and reported via [debugPrint]; they never
+/// Export failures are swallowed and reported to [stderr]; they never
 /// propagate into application code.
 class BatchLogRecordProcessor implements LogRecordProcessor {
   BatchLogRecordProcessor(
@@ -91,10 +92,12 @@ class BatchLogRecordProcessor implements LogRecordProcessor {
       try {
         final result = await exporter.export(batch, resource);
         if (!result.success) {
-          debugPrint('flutter_otel: batch log export failed: ${result.error}');
+          stderr.writeln(
+            'flutter_otel: batch log export failed: ${result.error}',
+          );
         }
       } catch (e, stackTrace) {
-        debugPrint('flutter_otel: batch log export threw: $e\n$stackTrace');
+        stderr.writeln('flutter_otel: batch log export threw: $e\n$stackTrace');
       }
     }
   }

@@ -59,13 +59,13 @@ jobs:
         working-directory: packages/flutter_otel_instrumentation_dio
         run: dart test
 
-      # --- flutter_otel_sdk: depends on Flutter (WidgetsBindingObserver) ---
+      # --- flutter_otel_sdk: pure Dart, no Flutter dependency ---
       - name: Analyze flutter_otel_sdk
         working-directory: packages/flutter_otel_sdk
-        run: flutter analyze
+        run: dart analyze
       - name: Test flutter_otel_sdk
         working-directory: packages/flutter_otel_sdk
-        run: flutter test
+        run: dart test
 
       # --- flutter_otel_native: depends on Flutter (MethodChannel). Only
       # the Dart side is tested here — the Swift side has no Flutter

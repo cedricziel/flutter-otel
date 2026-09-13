@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_otel_api/flutter_otel_api.dart';
 
 /// A [SpanProcessor] that exports every finished span immediately, one at a
@@ -27,10 +27,10 @@ class SimpleSpanProcessor implements SpanProcessor {
     try {
       final result = await exporter.export(spans, resource);
       if (!result.success) {
-        debugPrint('flutter_otel: span export failed: ${result.error}');
+        stderr.writeln('flutter_otel: span export failed: ${result.error}');
       }
     } catch (e, stackTrace) {
-      debugPrint('flutter_otel: span export threw: $e\n$stackTrace');
+      stderr.writeln('flutter_otel: span export threw: $e\n$stackTrace');
     }
   }
 

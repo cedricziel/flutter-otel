@@ -1,14 +1,9 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_otel_api/flutter_otel_api.dart';
 import 'package:flutter_otel_exporter_otlp_http/flutter_otel_exporter_otlp_http.dart';
+import 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
 import 'package:http/http.dart' as http;
 
-import 'batch_log_record_processor.dart';
-import 'batch_span_processor.dart';
 import 'default_session_manager.dart';
-import 'otel_sdk_config.dart';
-import 'sdk_logger_provider.dart';
-import 'sdk_tracer_provider.dart';
 
 /// Top-level facade for flutter_otel: owns the singleton SDK instance, the
 /// [LoggerProvider] pipeline, the [TracerProvider] pipeline, and
@@ -61,8 +56,10 @@ class OTelSdk {
       scheduledDelay: config.scheduledDelay,
     );
 
-    final spanExporter =
-        _resolveSpanExporter(config, onOwnedClient: onOwnedClient);
+    final spanExporter = _resolveSpanExporter(
+      config,
+      onOwnedClient: onOwnedClient,
+    );
     final spanProcessor = BatchSpanProcessor(
       spanExporter,
       config.resource,
@@ -81,8 +78,9 @@ class OTelSdk {
       // ensureInitialized() is idempotent and safe to call multiple times,
       // even if the consumer already called it themselves.
       WidgetsFlutterBinding.ensureInitialized();
-      sessionManager =
-          DefaultSessionManager(idleTimeout: config.sessionTimeout);
+      sessionManager = DefaultSessionManager(
+        idleTimeout: config.sessionTimeout,
+      );
     }
 
     final loggerProvider = SdkLoggerProvider(
@@ -221,10 +219,7 @@ class OTelSdk {
   /// client(s), and the session manager's lifecycle observer.
   Future<void> shutdown() async {
     await forceFlush();
-    await Future.wait([
-      loggerProvider.shutdown(),
-      tracerProvider.shutdown(),
-    ]);
+    await Future.wait([loggerProvider.shutdown(), tracerProvider.shutdown()]);
     final manager = sessionManager;
     if (manager is DefaultSessionManager) {
       manager.dispose();
