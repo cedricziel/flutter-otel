@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 import 'support/fake_span_exporter.dart';
 

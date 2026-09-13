@@ -1,4 +1,7 @@
-analyzer:
-  exclude:
-    - build/**
-include: package:flutter_lints/flutter.yaml
+include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    - prefer_single_quotes
+    - always_declare_return_types
+    - unawaited_futures

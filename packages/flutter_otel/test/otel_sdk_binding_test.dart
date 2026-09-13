@@ -2,7 +2,7 @@
 // (unlike the other test files in this package) so this file exercises the
 // scenario of a consumer calling `OTelSdk.initialize(...)` as the very first
 // line of `main()`, before any Flutter binding has been set up.
-import 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
+import 'package:flutter_otel/flutter_otel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_log_record_exporter.dart';

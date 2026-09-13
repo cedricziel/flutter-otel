@@ -1,4 +1,4 @@
-import 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
+import 'package:flutter_otel/flutter_otel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -34,21 +34,23 @@ void main() {
       expect(OTelSdk.maybeInstance, same(sdk));
     });
 
-    test('reset clears the singleton and shuts down the previous instance',
-        () async {
-      final exporter = FakeLogRecordExporter();
-      await OTelSdk.initialize(
-        OTelSdkConfig(
-          resource: OTelResource(serviceName: 'test'),
-          logExporter: exporter,
-        ),
-      );
+    test(
+      'reset clears the singleton and shuts down the previous instance',
+      () async {
+        final exporter = FakeLogRecordExporter();
+        await OTelSdk.initialize(
+          OTelSdkConfig(
+            resource: OTelResource(serviceName: 'test'),
+            logExporter: exporter,
+          ),
+        );
 
-      await OTelSdk.reset();
+        await OTelSdk.reset();
 
-      expect(OTelSdk.maybeInstance, isNull);
-      expect(exporter.shutdownCallCount, 1);
-    });
+        expect(OTelSdk.maybeInstance, isNull);
+        expect(exporter.shutdownCallCount, 1);
+      },
+    );
   });
 
   group('OTelSdk.getLogger passthrough', () {
@@ -88,35 +90,36 @@ void main() {
 
   group('OTelSdk trace-to-log correlation', () {
     test(
-        'logger.info(...) called inside tracer.startActiveSpan(...) '
-        'produces a LogRecord whose traceId/spanId match the active span',
-        () async {
-      final logExporter = FakeLogRecordExporter();
-      final spanExporter = FakeSpanExporter();
-      final sdk = await OTelSdk.initialize(
-        OTelSdkConfig(
-          resource: OTelResource(serviceName: 'test'),
-          logExporter: logExporter,
-          spanExporter: spanExporter,
-        ),
-      );
+      'logger.info(...) called inside tracer.startActiveSpan(...) '
+      'produces a LogRecord whose traceId/spanId match the active span',
+      () async {
+        final logExporter = FakeLogRecordExporter();
+        final spanExporter = FakeSpanExporter();
+        final sdk = await OTelSdk.initialize(
+          OTelSdkConfig(
+            resource: OTelResource(serviceName: 'test'),
+            logExporter: logExporter,
+            spanExporter: spanExporter,
+          ),
+        );
 
-      SpanContext? activeContext;
-      await sdk.getTracer().startActiveSpan('do-work', (span) async {
-        activeContext = span.spanContext;
-        sdk.getLogger().info('inside a span');
-      });
-      await sdk.forceFlush();
+        SpanContext? activeContext;
+        await sdk.getTracer().startActiveSpan('do-work', (span) async {
+          activeContext = span.spanContext;
+          sdk.getLogger().info('inside a span');
+        });
+        await sdk.forceFlush();
 
-      final record = logExporter.allRecords.single;
-      expect(record.traceId, isNotNull);
-      expect(record.spanId, isNotNull);
-      expect(record.traceId, activeContext!.traceId);
-      expect(record.spanId, activeContext!.spanId);
+        final record = logExporter.allRecords.single;
+        expect(record.traceId, isNotNull);
+        expect(record.spanId, isNotNull);
+        expect(record.traceId, activeContext!.traceId);
+        expect(record.spanId, activeContext!.spanId);
 
-      final span = spanExporter.allSpans.single;
-      expect(span.spanContext, activeContext);
-    });
+        final span = spanExporter.allSpans.single;
+        expect(span.spanContext, activeContext);
+      },
+    );
 
     test('logs emitted outside any span carry no traceId/spanId', () async {
       final logExporter = FakeLogRecordExporter();
@@ -138,109 +141,121 @@ void main() {
   });
 
   group('OTelSdk session tracking', () {
-    test('sessionManager is non-null and session.id is merged by default',
-        () async {
-      final exporter = FakeLogRecordExporter();
-      final sdk = await OTelSdk.initialize(
-        OTelSdkConfig(
-          resource: OTelResource(serviceName: 'test'),
-          logExporter: exporter,
-        ),
-      );
+    test(
+      'sessionManager is non-null and session.id is merged by default',
+      () async {
+        final exporter = FakeLogRecordExporter();
+        final sdk = await OTelSdk.initialize(
+          OTelSdkConfig(
+            resource: OTelResource(serviceName: 'test'),
+            logExporter: exporter,
+          ),
+        );
 
-      expect(sdk.sessionManager, isNotNull);
+        expect(sdk.sessionManager, isNotNull);
 
-      sdk.getLogger().info('hello');
-      await sdk.forceFlush();
+        sdk.getLogger().info('hello');
+        await sdk.forceFlush();
 
-      expect(exporter.allRecords.single.attributes['session.id'],
-          sdk.sessionManager!.sessionId);
-    });
+        expect(
+          exporter.allRecords.single.attributes['session.id'],
+          sdk.sessionManager!.sessionId,
+        );
+      },
+    );
 
-    test('sessionManager is null and no session.id is added when disabled',
-        () async {
-      final exporter = FakeLogRecordExporter();
-      final sdk = await OTelSdk.initialize(
-        OTelSdkConfig(
-          resource: OTelResource(serviceName: 'test'),
-          sessionTrackingEnabled: false,
-          logExporter: exporter,
-        ),
-      );
+    test(
+      'sessionManager is null and no session.id is added when disabled',
+      () async {
+        final exporter = FakeLogRecordExporter();
+        final sdk = await OTelSdk.initialize(
+          OTelSdkConfig(
+            resource: OTelResource(serviceName: 'test'),
+            sessionTrackingEnabled: false,
+            logExporter: exporter,
+          ),
+        );
 
-      expect(sdk.sessionManager, isNull);
+        expect(sdk.sessionManager, isNull);
 
-      sdk.getLogger().info('hello');
-      await sdk.forceFlush();
+        sdk.getLogger().info('hello');
+        await sdk.forceFlush();
 
-      expect(
-        exporter.allRecords.single.attributes.containsKey('session.id'),
-        isFalse,
-      );
-    });
+        expect(
+          exporter.allRecords.single.attributes.containsKey('session.id'),
+          isFalse,
+        );
+      },
+    );
   });
 
   group('OTelSdk enabled: false', () {
-    test('makes zero HTTP calls even when an OTLP endpoint is configured',
-        () async {
-      var callCount = 0;
-      final client = MockClient((request) async {
-        callCount++;
-        return http.Response('ok', 200);
-      });
+    test(
+      'makes zero HTTP calls even when an OTLP endpoint is configured',
+      () async {
+        var callCount = 0;
+        final client = MockClient((request) async {
+          callCount++;
+          return http.Response('ok', 200);
+        });
 
-      final sdk = await OTelSdk.initialize(
-        OTelSdkConfig(
-          resource: OTelResource(serviceName: 'test'),
-          enabled: false,
-          otlpEndpoint: Uri.parse('https://collector.example.com'),
-          httpClient: client,
-        ),
-      );
+        final sdk = await OTelSdk.initialize(
+          OTelSdkConfig(
+            resource: OTelResource(serviceName: 'test'),
+            enabled: false,
+            otlpEndpoint: Uri.parse('https://collector.example.com'),
+            httpClient: client,
+          ),
+        );
 
-      sdk.getLogger().info('one');
-      sdk.getLogger().error('two');
-      await sdk.forceFlush();
+        sdk.getLogger().info('one');
+        sdk.getLogger().error('two');
+        await sdk.forceFlush();
 
-      expect(callCount, 0);
-    });
+        expect(callCount, 0);
+      },
+    );
 
-    test('makes zero HTTP calls for traces either, even with spans started',
-        () async {
-      var callCount = 0;
-      final client = MockClient((request) async {
-        callCount++;
-        return http.Response('ok', 200);
-      });
+    test(
+      'makes zero HTTP calls for traces either, even with spans started',
+      () async {
+        var callCount = 0;
+        final client = MockClient((request) async {
+          callCount++;
+          return http.Response('ok', 200);
+        });
 
-      final sdk = await OTelSdk.initialize(
-        OTelSdkConfig(
-          resource: OTelResource(serviceName: 'test'),
-          enabled: false,
-          otlpEndpoint: Uri.parse('https://collector.example.com'),
-          httpClient: client,
-        ),
-      );
+        final sdk = await OTelSdk.initialize(
+          OTelSdkConfig(
+            resource: OTelResource(serviceName: 'test'),
+            enabled: false,
+            otlpEndpoint: Uri.parse('https://collector.example.com'),
+            httpClient: client,
+          ),
+        );
 
-      sdk.getTracer().startSpan('op').end();
-      await sdk.getTracer().startActiveSpan('op2', (span) async {});
-      await sdk.forceFlush();
+        sdk.getTracer().startSpan('op').end();
+        await sdk.getTracer().startActiveSpan('op2', (span) async {});
+        await sdk.forceFlush();
 
-      expect(callCount, 0);
-    });
+        expect(callCount, 0);
+      },
+    );
   });
 
   group('OTelSdk OTLP endpoint resolution', () {
-    test('enabled with no endpoint and no override exporter is a safe no-op',
-        () async {
-      final sdk = await OTelSdk.initialize(
-        OTelSdkConfig(resource: OTelResource(serviceName: 'test')),
-      );
+    test(
+      'enabled with no endpoint and no override exporter is a safe no-op',
+      () async {
+        final sdk = await OTelSdk.initialize(
+          OTelSdkConfig(resource: OTelResource(serviceName: 'test')),
+        );
 
-      // Should not throw even though there is nowhere to export to.
-      sdk.getLogger().info('hello');
-      await expectLater(sdk.forceFlush(), completes);
-    });
+        // Should not throw even though there is nowhere to export to.
+        sdk.getLogger().info('hello');
+        await expectLater(sdk.forceFlush(), completes);
+      },
+    );
 
     test(
         'otlpEndpoint is used to build a real OTLP exporter that posts to '
@@ -312,10 +327,7 @@ void main() {
       sdk.getTracer().startSpan('op').end();
       await sdk.forceFlush();
 
-      expect(
-        capturedUri,
-        Uri.parse('https://collector.example.com/v1/traces'),
-      );
+      expect(capturedUri, Uri.parse('https://collector.example.com/v1/traces'));
     });
 
     test('spanExporter override bypasses otlpEndpoint entirely', () async {

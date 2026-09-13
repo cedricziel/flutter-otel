@@ -1,5 +1,5 @@
 import 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 void main() {
   OTelResource resource() => OTelResource(serviceName: 'test');
