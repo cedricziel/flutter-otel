@@ -91,6 +91,7 @@ class _RecordingTracer implements Tracer {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
     SpanContext? parentContext,
+    List<SpanLink> links = const [],
   }) {
     _counter++;
     final span = _RecordingSpan(
@@ -112,6 +113,7 @@ class _RecordingTracer implements Tracer {
     Future<T> Function(Span span) body, {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
+    List<SpanLink> links = const [],
   }) async {
     final span = startSpan(name, kind: kind, attributes: attributes);
     try {
@@ -132,6 +134,7 @@ class _ThrowingTracer implements Tracer {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
     SpanContext? parentContext,
+    List<SpanLink> links = const [],
   }) =>
       throw StateError('boom: a misbehaving tracer');
 
@@ -141,6 +144,7 @@ class _ThrowingTracer implements Tracer {
     Future<T> Function(Span span) body, {
     SpanKind kind = SpanKind.internal,
     Map<String, Object?>? attributes,
+    List<SpanLink> links = const [],
   }) =>
       throw StateError('boom: a misbehaving tracer');
 }
