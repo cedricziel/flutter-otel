@@ -40,6 +40,8 @@ public class FlutterOtelNativePlugin: NSObject, FlutterPlugin {
         case "clearCurrentTraceContext":
             recorder.clearTraceContext()
             result(nil)
+        case "distributionEnvironment":
+            result(DistributionEnvironment.current())
         default:
             result(FlutterMethodNotImplemented)
         }

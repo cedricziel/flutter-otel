@@ -28,9 +28,9 @@ void main() {
   void mockDrainResponse(Map<String, Object?> response) {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      expect(call.method, 'drainQueue');
-      return response;
-    });
+          expect(call.method, 'drainQueue');
+          return response;
+        });
   }
 
   test('ingests a mix of decodable span and log lines', () async {
@@ -105,9 +105,9 @@ void main() {
       MethodCall? invoked;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
-        invoked = call;
-        return null;
-      });
+            invoked = call;
+            return null;
+          });
 
       await bridge.setSessionId('session-123');
 
@@ -115,39 +115,85 @@ void main() {
       expect(invoked?.arguments, {'sessionId': 'session-123'});
     });
 
-    test('setCurrentTraceContext invokes the channel with traceId/spanId',
-        () async {
+    test(
+      'setCurrentTraceContext invokes the channel with traceId/spanId',
+      () async {
+        MethodCall? invoked;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              invoked = call;
+              return null;
+            });
+
+        await bridge.setCurrentTraceContext(
+          const SpanContext(
+            traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+            spanId: '00f067aa0ba902b7',
+          ),
+        );
+
+        expect(invoked?.method, 'setCurrentTraceContext');
+        expect(invoked?.arguments, {
+          'traceId': '4bf92f3577b34da6a3ce929d0e0e4736',
+          'spanId': '00f067aa0ba902b7',
+        });
+      },
+    );
+
+    test(
+      'clearCurrentTraceContext invokes the channel with no arguments',
+      () async {
+        MethodCall? invoked;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              invoked = call;
+              return null;
+            });
+
+        await bridge.clearCurrentTraceContext();
+
+        expect(invoked?.method, 'clearCurrentTraceContext');
+      },
+    );
+  });
+
+  group('distributionEnvironment', () {
+    test('returns whatever native reports', () async {
       MethodCall? invoked;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
-        invoked = call;
-        return null;
-      });
+            invoked = call;
+            return 'testflight';
+          });
 
-      await bridge.setCurrentTraceContext(const SpanContext(
-        traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
-        spanId: '00f067aa0ba902b7',
-      ));
+      final result = await bridge.distributionEnvironment();
 
-      expect(invoked?.method, 'setCurrentTraceContext');
-      expect(invoked?.arguments, {
-        'traceId': '4bf92f3577b34da6a3ce929d0e0e4736',
-        'spanId': '00f067aa0ba902b7',
-      });
+      expect(invoked?.method, 'distributionEnvironment');
+      expect(result, 'testflight');
     });
 
-    test('clearCurrentTraceContext invokes the channel with no arguments',
-        () async {
-      MethodCall? invoked;
+    test('returns "development" when native returns null', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, (call) async {
-        invoked = call;
-        return null;
-      });
+          .setMockMethodCallHandler(channel, (call) async => null);
 
-      await bridge.clearCurrentTraceContext();
+      final result = await bridge.distributionEnvironment();
 
-      expect(invoked?.method, 'clearCurrentTraceContext');
+      expect(result, 'development');
     });
+
+    test(
+      'returns "development" rather than throwing when the channel fails',
+      () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              channel,
+              (call) async => throw PlatformException(code: 'unavailable'),
+            );
+
+        final result = await bridge.distributionEnvironment();
+
+        expect(result, 'development');
+      },
+    );
   });
 }
