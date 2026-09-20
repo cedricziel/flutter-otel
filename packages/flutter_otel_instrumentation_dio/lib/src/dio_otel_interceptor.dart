@@ -39,6 +39,7 @@ class DioOTelInterceptor extends Interceptor {
     DateTime Function()? clock,
     this.includeQueryParameters = false,
   })  : _privacy = false,
+        routeSegments = 2,
         _tracer = tracer,
         _clock = clock ?? DateTime.now,
         _spanKey = 'flutter_otel.span.${_instanceCounter++}';
@@ -51,8 +52,10 @@ class DioOTelInterceptor extends Interceptor {
   /// trace, and no `traceparent` header is added to the request. What is
   /// recorded is the method, the status code, the [DioException] type name
   /// as `error.type`, the duration and, for relative request paths such as
-  /// `/api/status`, that path as `http.route` (without query or fragment).
-  /// For an absolute request path no route is recorded at all.
+  /// `/api/status`, the first [routeSegments] path segments as `http.route`
+  /// (without query or fragment). Later segments are usually identifiers, so
+  /// `/api/sessions/<id>/messages` is recorded as `/api/sessions`. For an
+  /// absolute request path no route is recorded at all.
   ///
   /// Each request produces one log record when it finishes, and, when a
   /// [tracer] is supplied, one CLIENT span named `HTTP <METHOD>`. Both carry
@@ -63,7 +66,9 @@ class DioOTelInterceptor extends Interceptor {
     this._logger, {
     Tracer? tracer,
     DateTime Function()? clock,
-  })  : _privacy = true,
+    this.routeSegments = 2,
+  })  : assert(routeSegments >= 1, 'routeSegments must be at least 1'),
+        _privacy = true,
         includeQueryParameters = false,
         _tracer = tracer,
         _clock = clock ?? DateTime.now,
@@ -86,6 +91,11 @@ class DioOTelInterceptor extends Interceptor {
   final String _spanKey;
 
   final bool _privacy;
+
+  /// How many leading path segments [DioOTelInterceptor.privacy] keeps as
+  /// `http.route`. Not used by the default constructor, which records the
+  /// full URL.
+  final int routeSegments;
   final Logger _logger;
   final Tracer? _tracer;
   final DateTime Function() _clock;
@@ -244,22 +254,20 @@ class DioOTelInterceptor extends Interceptor {
   }) {
     final durationMs = _durationMsSince(options);
     if (durationMs == null) return;
+    // One rule for the span status and the log severity, so the two never
+    // disagree. A 1xx, 2xx or 3xx status is not a failure, and neither is a
+    // response whose status is unknown.
+    final failed = errorType != null || (status != null && status >= 400);
     final span = _takeSpan(options);
     _safeTrace(() {
       if (span == null) return;
       if (status != null) span.setAttribute('http.status_code', status);
       if (errorType != null) span.setAttribute('error.type', errorType);
-      span.setStatus(
-        errorType != null || (status != null && status >= 400)
-            ? StatusCode.error
-            : StatusCode.ok,
-      );
+      span.setStatus(failed ? StatusCode.error : StatusCode.ok);
       span.end();
     });
     _safeLog(() {
       final route = _route(options.path);
-      final failed =
-          errorType != null || status == null || status < 200 || status >= 300;
       _logger.emit(
         LogRecord(
           body: [
@@ -282,14 +290,19 @@ class DioOTelInterceptor extends Interceptor {
     });
   }
 
-  /// The request path for relative paths only, without query or fragment.
+  /// The first [routeSegments] segments of a relative request path, without
+  /// query or fragment.
   ///
   /// A leading `//` is a network-path reference that carries a host, so it
   /// yields no route.
-  static String? _route(String path) {
+  String? _route(String path) {
     if (!path.startsWith('/') || path.startsWith('//')) return null;
     final end = path.indexOf(_routeEnd);
-    return end < 0 ? path : path.substring(0, end);
+    final segments = (end < 0 ? path : path.substring(0, end))
+        .split('/')
+        .where((segment) => segment.isNotEmpty)
+        .take(routeSegments);
+    return '/${segments.join('/')}';
   }
 
   /// Removes and returns the [Span] stashed on [options] by [onRequest], if

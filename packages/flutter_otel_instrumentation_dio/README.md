@@ -71,12 +71,16 @@ dio.interceptors.add(
   otherwise.
 - One log record per finished request, with body
   `HTTP <METHOD> <route> <status or error type>` (the route is left out when
-  unknown), severity `info` for 2xx and `error` otherwise, and the attributes
-  `http.method`, `http.route`, `http.status_code`, `http.duration_ms` and
-  `error.type`, plus the span's trace and span ids.
-- `http.route` is the request path when it is relative (starts with `/`),
-  without query or fragment. For an absolute request path, or one starting
-  with `//`, no route is recorded, so a `baseUrl` never leaks either.
+  unknown), severity `error` for a status of 400 or above or for a
+  `DioException` and `info` otherwise (the same rule as the span status), and
+  the attributes `http.method`, `http.route`, `http.status_code`,
+  `http.duration_ms` and `error.type`, plus the span's trace and span ids.
+- `http.route` is the first two segments of the request path when it is
+  relative (starts with `/`), without query or fragment, so
+  `/api/sessions/<id>/messages` is recorded as `/api/sessions` and path
+  parameters such as ids and names are not exported. Pass `routeSegments` to
+  keep a different number. For an absolute request path, or one starting with
+  `//`, no route is recorded, so a `baseUrl` never leaks either.
 - No `traceparent` header is added, so no trace context reaches the server.
 - No exception message or stack trace is recorded, because Dio puts the host
   in them. `error.type` is the `DioExceptionType` name, for example

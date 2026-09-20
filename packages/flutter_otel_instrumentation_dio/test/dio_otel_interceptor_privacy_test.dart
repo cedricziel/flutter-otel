@@ -301,4 +301,195 @@ void main() {
       expect(logger.records.single.traceId, isNull);
     });
   });
+
+  group('route', () {
+    // Path parameters (ids, profile names) must never be exported, on either
+    // the span or the log record.
+    const cases = <String, String?>{
+      '/api/status': '/api/status',
+      '/api/sessions': '/api/sessions',
+      '/api/sessions/20260101_abc123': '/api/sessions',
+      '/api/sessions/20260101_abc123/messages': '/api/sessions',
+      '/api/profiles/my-private-profile': '/api/profiles',
+      '/api/profiles/my-private-profile/soul': '/api/profiles',
+      '/api/plugins/kanban/tasks/t_9f8e7d': '/api/plugins',
+      '/api/plugins/kanban/boards/secret-board/tasks': '/api/plugins',
+      '/api/mcp/servers/internal-tools/auth': '/api/mcp',
+      '/api/sessions/': '/api/sessions',
+      '/api/sessions/20260101_abc123/?token=hunter2#frag': '/api/sessions',
+      '/api/x?token=hunter2#frag': '/api/x',
+    };
+
+    for (final entry in cases.entries) {
+      final path = entry.key;
+      final expected = entry.value;
+      test('limits $path to ${expected ?? 'no route'}', () async {
+        final dio = buildDio((_) async => ResponseBody.fromString('', 200));
+
+        await dio.get<dynamic>(path);
+
+        final record = logger.records.single;
+        expect(tracer.spans.single.attributes['http.route'], expected);
+        expect(record.attributes['http.route'], expected);
+        expect(
+            record.body, 'HTTP GET ${expected == null ? '' : '$expected '}200');
+      });
+    }
+
+    test('keeps the root path as /', () async {
+      final dio = buildDio((_) async => ResponseBody.fromString('', 200));
+
+      await dio.get<dynamic>('/');
+
+      expect(tracer.spans.single.attributes['http.route'], '/');
+      expect(logger.records.single.attributes['http.route'], '/');
+    });
+
+    test('never exports path parameters on the span or the log', () async {
+      final dio = buildDio((_) async => ResponseBody.fromString('', 200));
+
+      await dio.get<dynamic>('/api/sessions/20260101_abc123/messages');
+
+      final everything = [
+        tracer.spans.single.attributes.values.join(' '),
+        '${logger.records.single.body} ${logger.records.single.attributes}',
+      ].join(' ');
+      expect(everything, isNot(contains('20260101_abc123')));
+      expect(everything, isNot(contains('messages')));
+    });
+
+    test('still yields no route for an absolute URL', () async {
+      final dio = buildDio((_) async => ResponseBody.fromString('', 200));
+
+      await dio.get<dynamic>('https://$_host/api/sessions/abc');
+
+      expect(tracer.spans.single.attributes.containsKey('http.route'), isFalse);
+      expect(
+        logger.records.single.attributes.containsKey('http.route'),
+        isFalse,
+      );
+    });
+
+    test('routeSegments keeps that many segments', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://$_host'))
+        ..httpClientAdapter = _FakeAdapter(
+          (_) async => ResponseBody.fromString('', 200),
+        )
+        ..interceptors.add(
+          DioOTelInterceptor.privacy(logger, tracer: tracer, routeSegments: 3),
+        );
+
+      await dio.get<dynamic>('/api/sessions/20260101_abc123/messages');
+
+      expect(tracer.spans.single.attributes['http.route'],
+          '/api/sessions/20260101_abc123');
+      expect(
+        logger.records.single.attributes['http.route'],
+        '/api/sessions/20260101_abc123',
+      );
+    });
+
+    test('routeSegments of 1 keeps only the first segment', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://$_host'))
+        ..httpClientAdapter = _FakeAdapter(
+          (_) async => ResponseBody.fromString('', 200),
+        )
+        ..interceptors.add(
+          DioOTelInterceptor.privacy(logger, tracer: tracer, routeSegments: 1),
+        );
+
+      await dio.get<dynamic>('/api/sessions');
+
+      expect(tracer.spans.single.attributes['http.route'], '/api');
+    });
+
+    test('routeSegments must be at least 1', () {
+      expect(
+        () => DioOTelInterceptor.privacy(logger, routeSegments: 0),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+  });
+
+  group('failure rule', () {
+    Dio buildLenient(int status) {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://$_host',
+          validateStatus: (_) => true,
+        ),
+      );
+      dio.httpClientAdapter = _FakeAdapter(
+        (_) async => ResponseBody.fromString('', status),
+      );
+      dio.interceptors.add(DioOTelInterceptor.privacy(logger, tracer: tracer));
+      return dio;
+    }
+
+    for (final status in [204, 304]) {
+      test('$status is neither an error span nor an error log', () async {
+        final dio = buildLenient(status);
+
+        await dio.get<dynamic>('/api/x');
+
+        expect(tracer.spans.single.status, StatusCode.ok);
+        expect(logger.records.single.severity, LogSeverity.info);
+        expect(logger.records.single.attributes['http.status_code'], status);
+      });
+    }
+
+    for (final status in [404, 500]) {
+      test('$status is an error span and an error log', () async {
+        final dio = buildLenient(status);
+
+        await dio.get<dynamic>('/api/x');
+
+        expect(tracer.spans.single.status, StatusCode.error);
+        expect(logger.records.single.severity, LogSeverity.error);
+      });
+
+      test('$status thrown as a DioException is an error on both', () async {
+        final dio = buildDio((_) async => ResponseBody.fromString('', status));
+
+        await expectLater(
+          dio.get<dynamic>('/api/x'),
+          throwsA(isA<DioException>()),
+        );
+
+        expect(tracer.spans.single.status, StatusCode.error);
+        expect(logger.records.single.severity, LogSeverity.error);
+      });
+    }
+
+    test('a transport error without a status is an error on both', () async {
+      final dio = buildDio(
+        (options) async => throw DioException.connectionError(
+          requestOptions: options,
+          reason: 'offline',
+        ),
+      );
+
+      await expectLater(
+        dio.get<dynamic>('/api/x'),
+        throwsA(isA<DioException>()),
+      );
+
+      expect(tracer.spans.single.status, StatusCode.error);
+      expect(logger.records.single.severity, LogSeverity.error);
+    });
+
+    test('a response without a status or error type is not a failure', () {
+      final interceptor = DioOTelInterceptor.privacy(logger, tracer: tracer);
+      final options = RequestOptions(path: '/api/x');
+      interceptor.onRequest(options, RequestInterceptorHandler());
+
+      interceptor.onResponse(
+        Response<dynamic>(requestOptions: options),
+        ResponseInterceptorHandler(),
+      );
+
+      expect(tracer.spans.single.status, StatusCode.ok);
+      expect(logger.records.single.severity, LogSeverity.info);
+    });
+  });
 }
