@@ -18,7 +18,8 @@ can slot in later without reshaping this code. W3C Trace Context
 **iOS and macOS are the currently supported and tested platforms** (this
 matches the first consuming app). The Dart-only packages
 (`flutter_otel_api`, `flutter_otel_sdk`, `flutter_otel_exporter_otlp_http`,
-`flutter_otel`, `flutter_otel_instrumentation_dio`) have nothing
+`flutter_otel`, `flutter_otel_instrumentation_dio`,
+`flutter_otel_instrumentation_messaging`) have nothing
 iOS/macOS-specific in them — there are no platform channels and no native
 code, only `http`, `uuid`, and Flutter's cross-platform
 `WidgetsBindingObserver` — so Android, web, Windows, and Linux should work
@@ -53,6 +54,10 @@ flutter-otel/
     flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
                                          # including CLIENT spans + traceparent
                                          # propagation when a Tracer is given
+    flutter_otel_instrumentation_messaging/  # messaging-style tracing of
+                                         # long-lived connections (WebSocket,
+                                         # JSON-RPC): a connection span plus
+                                         # linked send/receive message spans
     flutter_otel_native/                # native (Swift) telemetry foundation
                                          # for iOS/macOS: an on-disk queue +
                                          # MethodChannel bridge so native code
@@ -60,8 +65,9 @@ flutter-otel/
                                          # without a running Dart isolate
 ```
 
-Three packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`, and
-`flutter_otel_instrumentation_dio`) are pure Dart with no Flutter dependency,
+Four packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`,
+`flutter_otel_instrumentation_dio`, and
+`flutter_otel_instrumentation_messaging`) are pure Dart with no Flutter dependency,
 so they also run on any Dart target (server, CLI, web) — that's the
 "multiplatform" half of the design. `flutter_otel_sdk` and the `flutter_otel`
 umbrella depend on Flutter for `WidgetsBindingObserver`-based session
@@ -75,6 +81,7 @@ example specific to it:
 - [`packages/flutter_otel_exporter_otlp_http`](packages/flutter_otel_exporter_otlp_http/README.md)
 - [`packages/flutter_otel`](packages/flutter_otel/README.md)
 - [`packages/flutter_otel_instrumentation_dio`](packages/flutter_otel_instrumentation_dio/README.md)
+- [`packages/flutter_otel_instrumentation_messaging`](packages/flutter_otel_instrumentation_messaging/README.md)
 - [`packages/flutter_otel_native`](packages/flutter_otel_native/README.md)
 
 ## Quick start
