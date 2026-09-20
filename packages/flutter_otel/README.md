@@ -84,6 +84,30 @@ See the [root README](../../README.md) for the full quick-start, the
 traces/correlation walkthrough, and the `OTEL_EXPORTER_OTLP_*`
 configuration naming convention this SDK mirrors.
 
+## App events and uncaught errors
+
+`appEventLogger` records that something happened, as an info log record with a
+fixed name and a few plain attributes. Pass only fixed names and coarse values
+(a state, a status code, a reason slug), never URLs, hosts or exception
+messages. `noopAppEventLogger` has the same signature for when telemetry is
+off. Neither ever throws.
+
+```dart
+final AppEventLogger logEvent = appEventLogger(otel.getLogger());
+
+logEvent('auth.state', {'state': 'ready'});
+```
+
+`installUncaughtErrorLogging` hooks `FlutterError.onError` and
+`PlatformDispatcher.instance.onError` and emits an error record per uncaught
+error. Only the exception type is recorded (`exception.type`), because
+messages and stack traces can carry user input. The previously installed
+handlers still run and their result is preserved.
+
+```dart
+installUncaughtErrorLogging(otel.getLogger());
+```
+
 ## Testing
 
 ```bash
