@@ -122,6 +122,18 @@ void main() {
     },
   );
 
+  test('leaves out the route for a network-path reference', () async {
+    final dio = buildDio((_) async => ResponseBody.fromString('', 200));
+
+    await dio.get<dynamic>('//$_host/api/status');
+
+    final span = tracer.spans.single;
+    expect(span.attributes.containsKey('http.route'), isFalse);
+    expect(span.attributes.values.join(' '), isNot(contains(_host)));
+    final record = logger.records.single;
+    expect('${record.body} ${record.attributes}', isNot(contains(_host)));
+  });
+
   test('does not add a traceparent header to requests', () async {
     final adapter = _FakeAdapter((_) async => ResponseBody.fromString('', 200));
     final dio = Dio(BaseOptions(baseUrl: 'https://$_host'))

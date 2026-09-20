@@ -283,8 +283,11 @@ class DioOTelInterceptor extends Interceptor {
   }
 
   /// The request path for relative paths only, without query or fragment.
+  ///
+  /// A leading `//` is a network-path reference that carries a host, so it
+  /// yields no route.
   static String? _route(String path) {
-    if (!path.startsWith('/')) return null;
+    if (!path.startsWith('/') || path.startsWith('//')) return null;
     final end = path.indexOf(_routeEnd);
     return end < 0 ? path : path.substring(0, end);
   }

@@ -75,8 +75,8 @@ dio.interceptors.add(
   `http.method`, `http.route`, `http.status_code`, `http.duration_ms` and
   `error.type`, plus the span's trace and span ids.
 - `http.route` is the request path when it is relative (starts with `/`),
-  without query or fragment. For an absolute request path no route is
-  recorded, so a `baseUrl` never leaks either.
+  without query or fragment. For an absolute request path, or one starting
+  with `//`, no route is recorded, so a `baseUrl` never leaks either.
 - No `traceparent` header is added, so no trace context reaches the server.
 - No exception message or stack trace is recorded, because Dio puts the host
   in them. `error.type` is the `DioExceptionType` name, for example
