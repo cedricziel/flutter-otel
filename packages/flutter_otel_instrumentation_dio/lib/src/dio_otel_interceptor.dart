@@ -24,6 +24,10 @@ import 'package:flutter_otel_api/flutter_otel_api.dart';
 /// );
 /// ```
 ///
+/// The default constructor records request URLs and injects `traceparent`.
+/// Apps that must not export the server address, for example because the
+/// user typed it in, use [DioOTelInterceptor.privacy] instead.
+///
 /// This establishes the `flutter_otel_instrumentation_<target>` pattern:
 /// future packages (navigation, go_router, ...) follow the same shape of
 /// "take a [Logger] (and optionally a [Tracer]), emit records/spans with
@@ -34,11 +38,39 @@ class DioOTelInterceptor extends Interceptor {
     Tracer? tracer,
     DateTime Function()? clock,
     this.includeQueryParameters = false,
-  })  : _tracer = tracer,
+  })  : _privacy = false,
+        _tracer = tracer,
+        _clock = clock ?? DateTime.now,
+        _spanKey = 'flutter_otel.span.${_instanceCounter++}';
+
+  /// Creates an interceptor for apps whose server address is not the app's
+  /// own to publish, for example one the user typed in.
+  ///
+  /// Nothing that could identify the server or its traffic is recorded: no
+  /// URL, host, user-info or query string, no exception message or stack
+  /// trace, and no `traceparent` header is added to the request. What is
+  /// recorded is the method, the status code, the [DioException] type name
+  /// as `error.type`, the duration and, for relative request paths such as
+  /// `/api/status`, that path as `http.route` (without query or fragment).
+  /// For an absolute request path no route is recorded at all.
+  ///
+  /// Each request produces one log record when it finishes, and, when a
+  /// [tracer] is supplied, one CLIENT span named `HTTP <METHOD>`. Both carry
+  /// the same attributes, and the record is linked to the span by trace and
+  /// span id. Like the default mode this never lets a failing [Logger] or
+  /// [Tracer] break the request.
+  DioOTelInterceptor.privacy(
+    this._logger, {
+    Tracer? tracer,
+    DateTime Function()? clock,
+  })  : _privacy = true,
+        includeQueryParameters = false,
+        _tracer = tracer,
         _clock = clock ?? DateTime.now,
         _spanKey = 'flutter_otel.span.${_instanceCounter++}';
 
   static const String _startTimeKey = 'flutter_otel.start_time';
+  static final RegExp _routeEnd = RegExp('[?#]');
 
   /// Monotonically increasing counter used to derive a unique [_spanKey]
   /// per instance ([RequestOptions.extra] keys must be [String]s, so a
@@ -53,6 +85,7 @@ class DioOTelInterceptor extends Interceptor {
   /// `end()`'d, or exported.
   final String _spanKey;
 
+  final bool _privacy;
   final Logger _logger;
   final Tracer? _tracer;
   final DateTime Function() _clock;
@@ -72,6 +105,11 @@ class DioOTelInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) {
+    if (_privacy) {
+      _startPrivate(options);
+      handler.next(options);
+      return;
+    }
     options.extra[_startTimeKey] = _clock();
     _safeLog(() {
       _logger.debug(
@@ -104,6 +142,11 @@ class DioOTelInterceptor extends Interceptor {
     Response<dynamic> response,
     ResponseInterceptorHandler handler,
   ) {
+    if (_privacy) {
+      _finishPrivate(response.requestOptions, status: response.statusCode);
+      handler.next(response);
+      return;
+    }
     final durationMs = _durationMsSince(response.requestOptions);
     _safeLog(() {
       _logger.info(
@@ -141,6 +184,15 @@ class DioOTelInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) {
+    if (_privacy) {
+      _finishPrivate(
+        err.requestOptions,
+        status: err.response?.statusCode,
+        errorType: err.type.name,
+      );
+      handler.next(err);
+      return;
+    }
     final durationMs = _durationMsSince(err.requestOptions);
     _safeLog(() {
       _logger.error(
@@ -168,6 +220,73 @@ class DioOTelInterceptor extends Interceptor {
       span.end();
     });
     handler.next(err);
+  }
+
+  void _startPrivate(RequestOptions options) {
+    options.extra[_startTimeKey] = _clock();
+    _safeTrace(() {
+      final route = _route(options.path);
+      options.extra[_spanKey] = _tracer?.startSpan(
+        'HTTP ${options.method}',
+        kind: SpanKind.client,
+        attributes: {
+          'http.method': options.method,
+          if (route != null) 'http.route': route,
+        },
+      );
+    });
+  }
+
+  void _finishPrivate(
+    RequestOptions options, {
+    required int? status,
+    String? errorType,
+  }) {
+    final durationMs = _durationMsSince(options);
+    if (durationMs == null) return;
+    final span = _takeSpan(options);
+    _safeTrace(() {
+      if (span == null) return;
+      if (status != null) span.setAttribute('http.status_code', status);
+      if (errorType != null) span.setAttribute('error.type', errorType);
+      span.setStatus(
+        errorType != null || (status != null && status >= 400)
+            ? StatusCode.error
+            : StatusCode.ok,
+      );
+      span.end();
+    });
+    _safeLog(() {
+      final route = _route(options.path);
+      final failed =
+          errorType != null || status == null || status < 200 || status >= 300;
+      _logger.emit(
+        LogRecord(
+          body: [
+            'HTTP ${options.method}',
+            if (route != null) route,
+            '${status ?? errorType}',
+          ].join(' '),
+          severity: failed ? LogSeverity.error : LogSeverity.info,
+          attributes: {
+            'http.method': options.method,
+            if (route != null) 'http.route': route,
+            if (status != null) 'http.status_code': status,
+            'http.duration_ms': durationMs,
+            if (errorType != null) 'error.type': errorType,
+          },
+          traceId: span?.spanContext.traceId,
+          spanId: span?.spanContext.spanId,
+        ),
+      );
+    });
+  }
+
+  /// The request path for relative paths only, without query or fragment.
+  static String? _route(String path) {
+    if (!path.startsWith('/')) return null;
+    final end = path.indexOf(_routeEnd);
+    return end < 0 ? path : path.substring(0, end);
   }
 
   /// Removes and returns the [Span] stashed on [options] by [onRequest], if
