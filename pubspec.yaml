@@ -12,3 +12,4 @@ workspace:
   - packages/flutter_otel_instrumentation_dio
   - packages/flutter_otel_instrumentation_messaging
   - packages/flutter_otel_native
+  - packages/flutter_otel_device_info
