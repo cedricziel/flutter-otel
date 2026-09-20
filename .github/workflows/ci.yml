@@ -95,6 +95,14 @@ jobs:
         working-directory: packages/flutter_otel
         run: flutter test
 
+      # --- flutter_otel_device_info: depends on Flutter (device_info_plus) ---
+      - name: Analyze flutter_otel_device_info
+        working-directory: packages/flutter_otel_device_info
+        run: flutter analyze
+      - name: Test flutter_otel_device_info
+        working-directory: packages/flutter_otel_device_info
+        run: flutter test
+
   macos-native-tests:
     # NativeTelemetryCore has no Flutter dependency, so swift test only
     # needs the Swift toolchain macos-latest ships with. Building the

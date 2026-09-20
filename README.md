@@ -63,6 +63,9 @@ flutter-otel/
                                          # MethodChannel bridge so native code
                                          # can record spans/logs before or
                                          # without a running Dart isolate
+    flutter_otel_device_info/           # coarse, non-identifying device
+                                         # attributes (OS, model, form factor)
+                                         # for OTelResource, from an allowlist
 ```
 
 Four packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`,
@@ -83,6 +86,7 @@ example specific to it:
 - [`packages/flutter_otel_instrumentation_dio`](packages/flutter_otel_instrumentation_dio/README.md)
 - [`packages/flutter_otel_instrumentation_messaging`](packages/flutter_otel_instrumentation_messaging/README.md)
 - [`packages/flutter_otel_native`](packages/flutter_otel_native/README.md)
+- [`packages/flutter_otel_device_info`](packages/flutter_otel_device_info/README.md)
 
 ## Quick start
 
