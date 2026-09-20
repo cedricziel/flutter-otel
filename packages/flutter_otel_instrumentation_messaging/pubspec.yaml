@@ -1,0 +1,19 @@
+name: flutter_otel_instrumentation_messaging
+description: >
+  Traces a long-lived messaging connection (a WebSocket, a JSON-RPC socket)
+  for flutter_otel: an HTTP client span for the upgrade, then a linked
+  producer span per request and consumer span per server event.
+version: 0.1.0
+homepage: https://github.com/cedricziel/flutter-otel
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter_otel_api: ^0.1.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+
+resolution: workspace

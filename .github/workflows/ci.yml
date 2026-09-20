@@ -59,6 +59,15 @@ jobs:
         working-directory: packages/flutter_otel_instrumentation_dio
         run: dart test
 
+      # --- flutter_otel_instrumentation_messaging: pure Dart, only depends
+      # on flutter_otel_api.
+      - name: Analyze flutter_otel_instrumentation_messaging
+        working-directory: packages/flutter_otel_instrumentation_messaging
+        run: dart analyze
+      - name: Test flutter_otel_instrumentation_messaging
+        working-directory: packages/flutter_otel_instrumentation_messaging
+        run: dart test
+
       # --- flutter_otel_sdk: pure Dart, no Flutter dependency ---
       - name: Analyze flutter_otel_sdk
         working-directory: packages/flutter_otel_sdk
