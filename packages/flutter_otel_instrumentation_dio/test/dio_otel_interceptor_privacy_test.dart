@@ -410,4 +410,86 @@ void main() {
       );
     });
   });
+
+  group('failure rule', () {
+    Dio buildLenient(int status) {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://$_host',
+          validateStatus: (_) => true,
+        ),
+      );
+      dio.httpClientAdapter = _FakeAdapter(
+        (_) async => ResponseBody.fromString('', status),
+      );
+      dio.interceptors.add(DioOTelInterceptor.privacy(logger, tracer: tracer));
+      return dio;
+    }
+
+    for (final status in [204, 304]) {
+      test('$status is neither an error span nor an error log', () async {
+        final dio = buildLenient(status);
+
+        await dio.get<dynamic>('/api/x');
+
+        expect(tracer.spans.single.status, StatusCode.ok);
+        expect(logger.records.single.severity, LogSeverity.info);
+        expect(logger.records.single.attributes['http.status_code'], status);
+      });
+    }
+
+    for (final status in [404, 500]) {
+      test('$status is an error span and an error log', () async {
+        final dio = buildLenient(status);
+
+        await dio.get<dynamic>('/api/x');
+
+        expect(tracer.spans.single.status, StatusCode.error);
+        expect(logger.records.single.severity, LogSeverity.error);
+      });
+
+      test('$status thrown as a DioException is an error on both', () async {
+        final dio = buildDio((_) async => ResponseBody.fromString('', status));
+
+        await expectLater(
+          dio.get<dynamic>('/api/x'),
+          throwsA(isA<DioException>()),
+        );
+
+        expect(tracer.spans.single.status, StatusCode.error);
+        expect(logger.records.single.severity, LogSeverity.error);
+      });
+    }
+
+    test('a transport error without a status is an error on both', () async {
+      final dio = buildDio(
+        (options) async => throw DioException.connectionError(
+          requestOptions: options,
+          reason: 'offline',
+        ),
+      );
+
+      await expectLater(
+        dio.get<dynamic>('/api/x'),
+        throwsA(isA<DioException>()),
+      );
+
+      expect(tracer.spans.single.status, StatusCode.error);
+      expect(logger.records.single.severity, LogSeverity.error);
+    });
+
+    test('a response without a status or error type is not a failure', () {
+      final interceptor = DioOTelInterceptor.privacy(logger, tracer: tracer);
+      final options = RequestOptions(path: '/api/x');
+      interceptor.onRequest(options, RequestInterceptorHandler());
+
+      interceptor.onResponse(
+        Response<dynamic>(requestOptions: options),
+        ResponseInterceptorHandler(),
+      );
+
+      expect(tracer.spans.single.status, StatusCode.ok);
+      expect(logger.records.single.severity, LogSeverity.info);
+    });
+  });
 }

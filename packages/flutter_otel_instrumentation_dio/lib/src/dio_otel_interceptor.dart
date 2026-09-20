@@ -254,22 +254,20 @@ class DioOTelInterceptor extends Interceptor {
   }) {
     final durationMs = _durationMsSince(options);
     if (durationMs == null) return;
+    // One rule for the span status and the log severity, so the two never
+    // disagree. A 1xx, 2xx or 3xx status is not a failure, and neither is a
+    // response whose status is unknown.
+    final failed = errorType != null || (status != null && status >= 400);
     final span = _takeSpan(options);
     _safeTrace(() {
       if (span == null) return;
       if (status != null) span.setAttribute('http.status_code', status);
       if (errorType != null) span.setAttribute('error.type', errorType);
-      span.setStatus(
-        errorType != null || (status != null && status >= 400)
-            ? StatusCode.error
-            : StatusCode.ok,
-      );
+      span.setStatus(failed ? StatusCode.error : StatusCode.ok);
       span.end();
     });
     _safeLog(() {
       final route = _route(options.path);
-      final failed =
-          errorType != null || status == null || status < 200 || status >= 300;
       _logger.emit(
         LogRecord(
           body: [

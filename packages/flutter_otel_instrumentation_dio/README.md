@@ -71,9 +71,10 @@ dio.interceptors.add(
   otherwise.
 - One log record per finished request, with body
   `HTTP <METHOD> <route> <status or error type>` (the route is left out when
-  unknown), severity `info` for 2xx and `error` otherwise, and the attributes
-  `http.method`, `http.route`, `http.status_code`, `http.duration_ms` and
-  `error.type`, plus the span's trace and span ids.
+  unknown), severity `error` for a status of 400 or above or for a
+  `DioException` and `info` otherwise (the same rule as the span status), and
+  the attributes `http.method`, `http.route`, `http.status_code`,
+  `http.duration_ms` and `error.type`, plus the span's trace and span ids.
 - `http.route` is the first two segments of the request path when it is
   relative (starts with `/`), without query or fragment, so
   `/api/sessions/<id>/messages` is recorded as `/api/sessions` and path
