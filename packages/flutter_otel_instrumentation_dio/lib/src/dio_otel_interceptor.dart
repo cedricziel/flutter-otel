@@ -71,11 +71,16 @@ class DioOTelInterceptor extends Interceptor {
     DateTime Function()? clock,
     int? routeSegments,
   })  : _privacy = true,
-        _routeSegments = routeSegments,
+        _routeSegments = _checkedRouteSegments(routeSegments),
         includeQueryParameters = false,
         _tracer = tracer,
         _clock = clock ?? DateTime.now,
         _spanKey = 'flutter_otel.span.${_instanceCounter++}';
+
+  static int? _checkedRouteSegments(int? value) {
+    if (value != null) RangeError.checkNotNegative(value, 'routeSegments');
+    return value;
+  }
 
   static const String _startTimeKey = 'flutter_otel.start_time';
   static final RegExp _routeEnd = RegExp('[?#]');

@@ -95,6 +95,13 @@ void main() {
   });
 
   group('with routeSegments', () {
+    test('rejects a negative limit instead of silently dropping telemetry', () {
+      expect(
+        () => DioOTelInterceptor.privacy(logger, routeSegments: -1),
+        throwsArgumentError,
+      );
+    });
+
     test('keeps only the leading segments, so path parameters never leave',
         () async {
       final dio = buildDio(
