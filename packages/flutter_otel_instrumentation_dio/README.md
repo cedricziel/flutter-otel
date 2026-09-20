@@ -47,6 +47,43 @@ depends on it — apps that use Dio add it directly alongside `flutter_otel`.
   throwing `Logger` or `Tracer`/`Span` can never prevent the Dio handler
   chain (`handler.next`/`resolve`/`reject`) from running.
 
+## Privacy mode
+
+The default constructor records the request URL (minus user-info and, unless
+`includeQueryParameters` is set, the query string), the exception on failure,
+and injects a `traceparent` header. That is unsuitable when the server
+address is not yours to publish, for example when the user typed it into the
+app. `DioOTelInterceptor.privacy` records only what cannot identify the
+server:
+
+```dart
+dio.interceptors.add(
+  DioOTelInterceptor.privacy(
+    OTelSdk.instance.getLogger(name: 'flutter_otel_instrumentation_dio'),
+    tracer: OTelSdk.instance.getTracer(name: 'flutter_otel_instrumentation_dio'),
+  ),
+);
+```
+
+- One CLIENT span per request, named `HTTP <METHOD>`, with `http.method`,
+  `http.route` (when known), `http.status_code` and `error.type`. Its status
+  is `error` for a status of 400 or above or for a `DioException`, `ok`
+  otherwise.
+- One log record per finished request, with body
+  `HTTP <METHOD> <route> <status or error type>` (the route is left out when
+  unknown), severity `info` for 2xx and `error` otherwise, and the attributes
+  `http.method`, `http.route`, `http.status_code`, `http.duration_ms` and
+  `error.type`, plus the span's trace and span ids.
+- `http.route` is the request path when it is relative (starts with `/`),
+  without query or fragment. For an absolute request path no route is
+  recorded, so a `baseUrl` never leaks either.
+- No `traceparent` header is added, so no trace context reaches the server.
+- No exception message or stack trace is recorded, because Dio puts the host
+  in them. `error.type` is the `DioExceptionType` name, for example
+  `connectionError`.
+- A failing `Logger` or `Tracer` never breaks the request, as in the default
+  mode.
+
 ## Install
 
 ```yaml
