@@ -39,6 +39,7 @@ class DioOTelInterceptor extends Interceptor {
     DateTime Function()? clock,
     this.includeQueryParameters = false,
   })  : _privacy = false,
+        _routeSegments = null,
         _tracer = tracer,
         _clock = clock ?? DateTime.now,
         _spanKey = 'flutter_otel.span.${_instanceCounter++}';
@@ -54,6 +55,11 @@ class DioOTelInterceptor extends Interceptor {
   /// `/api/status`, that path as `http.route` (without query or fragment).
   /// For an absolute request path no route is recorded at all.
   ///
+  /// Path parameters such as ids and names can identify a person or a server
+  /// setup, so set [routeSegments] to keep only that many leading segments:
+  /// with 2, `/api/sessions/<id>/messages` is recorded as `/api/sessions`.
+  /// By default the whole path is kept.
+  ///
   /// Each request produces one log record when it finishes, and, when a
   /// [tracer] is supplied, one CLIENT span named `HTTP <METHOD>`. Both carry
   /// the same attributes, and the record is linked to the span by trace and
@@ -63,7 +69,9 @@ class DioOTelInterceptor extends Interceptor {
     this._logger, {
     Tracer? tracer,
     DateTime Function()? clock,
+    int? routeSegments,
   })  : _privacy = true,
+        _routeSegments = routeSegments,
         includeQueryParameters = false,
         _tracer = tracer,
         _clock = clock ?? DateTime.now,
@@ -86,6 +94,7 @@ class DioOTelInterceptor extends Interceptor {
   final String _spanKey;
 
   final bool _privacy;
+  final int? _routeSegments;
   final Logger _logger;
   final Tracer? _tracer;
   final DateTime Function() _clock;
@@ -282,14 +291,21 @@ class DioOTelInterceptor extends Interceptor {
     });
   }
 
-  /// The request path for relative paths only, without query or fragment.
+  /// The request path for relative paths only, without query or fragment, cut
+  /// to the first `routeSegments` segments when that is set, since later
+  /// segments are where path parameters such as ids live.
   ///
   /// A leading `//` is a network-path reference that carries a host, so it
   /// yields no route.
-  static String? _route(String path) {
+  String? _route(String path) {
     if (!path.startsWith('/') || path.startsWith('//')) return null;
     final end = path.indexOf(_routeEnd);
-    return end < 0 ? path : path.substring(0, end);
+    final route = end < 0 ? path : path.substring(0, end);
+    final limit = _routeSegments;
+    if (limit == null) return route;
+    final segments =
+        route.split('/').where((segment) => segment.isNotEmpty).take(limit);
+    return '/${segments.join('/')}';
   }
 
   /// Removes and returns the [Span] stashed on [options] by [onRequest], if

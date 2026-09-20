@@ -38,6 +38,7 @@ void main() {
     Future<ResponseBody> Function(RequestOptions) respond, {
     Tracer? withTracer,
     Logger? withLogger,
+    int? routeSegments,
   }) {
     final dio = Dio(BaseOptions(baseUrl: 'https://$_host'));
     dio.httpClientAdapter = _FakeAdapter(respond);
@@ -45,6 +46,7 @@ void main() {
       DioOTelInterceptor.privacy(
         withLogger ?? logger,
         tracer: withTracer ?? tracer,
+        routeSegments: routeSegments,
       ),
     );
     return dio;
@@ -90,6 +92,44 @@ void main() {
     await dio.get<dynamic>('/api/x?token=hunter2');
 
     expect(tracer.spans.single.attributes['http.route'], '/api/x');
+  });
+
+  group('with routeSegments', () {
+    test('keeps only the leading segments, so path parameters never leave',
+        () async {
+      final dio = buildDio(
+        (_) async => ResponseBody.fromString('{}', 200),
+        routeSegments: 2,
+      );
+
+      await dio.get<dynamic>('/api/sessions/20260918-secret/messages?x=1');
+
+      expect(tracer.spans.single.attributes['http.route'], '/api/sessions');
+      expect(logger.records.single.attributes['http.route'], '/api/sessions');
+      expect(logger.records.single.body, 'HTTP GET /api/sessions 200');
+    });
+
+    test('leaves a path shorter than the limit as it is', () async {
+      final dio = buildDio(
+        (_) async => ResponseBody.fromString('{}', 200),
+        routeSegments: 2,
+      );
+
+      await dio.get<dynamic>('/api/status');
+
+      expect(tracer.spans.single.attributes['http.route'], '/api/status');
+    });
+
+    test('still records no route for a network-path reference', () async {
+      final dio = buildDio(
+        (_) async => ResponseBody.fromString('{}', 200),
+        routeSegments: 2,
+      );
+
+      await dio.get<dynamic>('//$_host/api/status');
+
+      expect(tracer.spans.single.attributes, isNot(contains('http.route')));
+    });
   });
 
   test('never exports the server host or exception details', () async {
