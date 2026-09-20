@@ -18,3 +18,4 @@ export 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
 export 'src/app_event_logger.dart';
 export 'src/default_session_manager.dart';
 export 'src/otel_sdk.dart';
+export 'src/uncaught_error_logging.dart';
