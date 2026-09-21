@@ -10,6 +10,7 @@ workspace:
   - packages/flutter_otel_exporter_otlp_http
   - packages/flutter_otel
   - packages/flutter_otel_instrumentation_dio
+  - packages/flutter_otel_instrumentation_http
   - packages/flutter_otel_instrumentation_messaging
   - packages/flutter_otel_native
   - packages/flutter_otel_device_info
