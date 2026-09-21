@@ -20,6 +20,7 @@ export 'src/metrics/meter.dart';
 export 'src/metrics/meter_provider.dart';
 export 'src/resource/otel_resource.dart';
 export 'src/session/session_manager.dart';
+export 'src/trace/http_header_attributes.dart';
 export 'src/trace/noop_span_exporter.dart';
 export 'src/trace/span.dart';
 export 'src/trace/span_context.dart';
