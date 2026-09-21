@@ -1,0 +1,20 @@
+name: dart_otel_instrumentation_dio
+description: >
+  Dio HTTP client instrumentation for flutter_otel: an Interceptor that
+  emits a log record per request/response/error via an injected Logger.
+  First of the dart_otel_instrumentation_<target> family.
+version: 0.1.0
+homepage: https://github.com/cedricziel/flutter-otel
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  dio: ^5.7.0
+  dart_otel_api: ^0.1.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+
+resolution: workspace

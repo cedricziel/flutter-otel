@@ -1,6 +1,6 @@
 // Smoke test proving the umbrella package's single import surfaces the full
-// public API contract from flutter_otel_api, flutter_otel_sdk, and
-// flutter_otel_exporter_otlp_http without needing separate imports.
+// public API contract from dart_otel_api, dart_otel_sdk, and
+// dart_otel_exporter_otlp_http without needing separate imports.
 import 'dart:convert';
 
 import 'package:flutter_otel/flutter_otel.dart';

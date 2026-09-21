@@ -2,9 +2,9 @@
 
 The umbrella "batteries included" package — **this is what apps depend
 on**. It re-exports the full public API from
-[`flutter_otel_api`](../flutter_otel_api/README.md),
-[`flutter_otel_sdk`](../flutter_otel_sdk/README.md), and
-[`flutter_otel_exporter_otlp_http`](../flutter_otel_exporter_otlp_http/README.md)
+[`dart_otel_api`](../dart_otel_api/README.md),
+[`dart_otel_sdk`](../dart_otel_sdk/README.md), and
+[`dart_otel_exporter_otlp_http`](../dart_otel_exporter_otlp_http/README.md)
 so a single import gives you everything.
 
 **Platform support:** iOS and macOS are the currently supported and tested
@@ -15,9 +15,9 @@ platform-specific — no platform channels, just `http`, `uuid`, and
 ## Position in the dependency graph
 
 ```text
-flutter_otel_api ──┬──────────────────────────────┐
+dart_otel_api ──┬──────────────────────────────┐
                     │                              │
-flutter_otel_exporter_otlp_http ──> flutter_otel_sdk ──> flutter_otel
+dart_otel_exporter_otlp_http ──> dart_otel_sdk ──> flutter_otel
 ```
 
 `flutter_otel` depends on all three of the packages above and exports them
@@ -38,21 +38,21 @@ dependencies:
 # so pub can't resolve them on its own — pin them here too, at the same
 # ref, or pub get will fail.
 dependency_overrides:
-  flutter_otel_api:
+  dart_otel_api:
     git:
       url: https://github.com/cedricziel/flutter-otel
       ref: main
-      path: packages/flutter_otel_api
-  flutter_otel_sdk:
+      path: packages/dart_otel_api
+  dart_otel_sdk:
     git:
       url: https://github.com/cedricziel/flutter-otel
       ref: main
-      path: packages/flutter_otel_sdk
-  flutter_otel_exporter_otlp_http:
+      path: packages/dart_otel_sdk
+  dart_otel_exporter_otlp_http:
     git:
       url: https://github.com/cedricziel/flutter-otel
       ref: main
-      path: packages/flutter_otel_exporter_otlp_http
+      path: packages/dart_otel_exporter_otlp_http
 ```
 
 ## Usage example

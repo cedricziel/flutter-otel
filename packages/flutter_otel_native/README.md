@@ -15,11 +15,11 @@ in the repo root for the full design and what's explicitly deferred.
 ## Position in the dependency graph
 
 ```
-flutter_otel_api ──> flutter_otel_native
+dart_otel_api ──> flutter_otel_native
 ```
 
-Depends on `flutter_otel_api` and `flutter` (for `MethodChannel`) only —
-never on `flutter_otel_sdk`, so it stays usable against any
+Depends on `dart_otel_api` and `flutter` (for `MethodChannel`) only —
+never on `dart_otel_sdk`, so it stays usable against any
 `TracerProvider`/`LoggerProvider` implementation, not just the concrete SDK.
 
 ## What's in here
@@ -27,7 +27,7 @@ never on `flutter_otel_sdk`, so it stays usable against any
 - **`NativeTelemetryBridge`** (Dart) — drains the native on-disk queue over
   a `MethodChannel` and forwards each record into a `TracerProvider`/
   `LoggerProvider` via the `ingestSpan`/`ingestLogRecord` methods added to
-  `flutter_otel_api` alongside this package. Also exposes
+  `dart_otel_api` alongside this package. Also exposes
   `setSessionId`/`setCurrentTraceContext`/`clearCurrentTraceContext` so
   native records can be tagged with the current session/trace.
 - **`NativeTelemetryRecorder`** (Swift, in the `NativeTelemetryCore`

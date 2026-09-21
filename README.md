@@ -11,15 +11,15 @@ plumbing) — with the core deliberately kept signal-agnostic (Resource + a
 processor/exporter pipeline pattern shared across signals) so **metrics**
 can slot in later without reshaping this code. W3C Trace Context
 (`traceparent`) propagation is supported for outgoing HTTP requests via
-`flutter_otel_instrumentation_dio`.
+`dart_otel_instrumentation_dio`.
 
 ## Platform support
 
 **iOS and macOS are the currently supported and tested platforms** (this
 matches the first consuming app). The Dart-only packages
-(`flutter_otel_api`, `flutter_otel_sdk`, `flutter_otel_exporter_otlp_http`,
-`flutter_otel`, `flutter_otel_instrumentation_dio`,
-`flutter_otel_instrumentation_messaging`) have nothing
+(`dart_otel_api`, `dart_otel_sdk`, `dart_otel_exporter_otlp_http`,
+`flutter_otel`, `dart_otel_instrumentation_dio`,
+`dart_otel_instrumentation_messaging`) have nothing
 iOS/macOS-specific in them — there are no platform channels and no native
 code, only `http`, `uuid`, and Flutter's cross-platform
 `WidgetsBindingObserver` — so Android, web, Windows, and Linux should work
@@ -40,21 +40,21 @@ run once at the repo root.
 flutter-otel/
   pubspec.yaml                          # workspace root manifest only
   packages/
-    flutter_otel_api/                   # pure Dart core: Resource, log types,
+    dart_otel_api/                   # pure Dart core: Resource, log types,
                                          # Span/Tracer/TracerProvider,
                                          # processor/exporter interfaces,
                                          # W3C trace-context helpers, a
                                          # metrics stub
-    flutter_otel_sdk/                   # concrete SDK: log/span processors,
+    dart_otel_sdk/                   # concrete SDK: log/span processors,
                                          # session tracking, the OTelSdk facade
-                                         # (depends on flutter_otel_api + Flutter)
-    flutter_otel_exporter_otlp_http/    # OTLP/HTTP JSON log + span exporters
-                                         # (pure Dart, depends on flutter_otel_api + http)
+                                         # (depends on dart_otel_api + Flutter)
+    dart_otel_exporter_otlp_http/    # OTLP/HTTP JSON log + span exporters
+                                         # (pure Dart, depends on dart_otel_api + http)
     flutter_otel/                       # umbrella package — what apps depend on
-    flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
+    dart_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
                                          # including CLIENT spans + traceparent
                                          # propagation when a Tracer is given
-    flutter_otel_instrumentation_messaging/  # messaging-style tracing of
+    dart_otel_instrumentation_messaging/  # messaging-style tracing of
                                          # long-lived connections (WebSocket,
                                          # JSON-RPC): a connection span plus
                                          # linked send/receive message spans
@@ -68,23 +68,23 @@ flutter-otel/
                                          # for OTelResource, from an allowlist
 ```
 
-Four packages (`flutter_otel_api`, `flutter_otel_exporter_otlp_http`,
-`flutter_otel_instrumentation_dio`, and
-`flutter_otel_instrumentation_messaging`) are pure Dart with no Flutter dependency,
+Four packages (`dart_otel_api`, `dart_otel_exporter_otlp_http`,
+`dart_otel_instrumentation_dio`, and
+`dart_otel_instrumentation_messaging`) are pure Dart with no Flutter dependency,
 so they also run on any Dart target (server, CLI, web) — that's the
-"multiplatform" half of the design. `flutter_otel_sdk` and the `flutter_otel`
+"multiplatform" half of the design. `dart_otel_sdk` and the `flutter_otel`
 umbrella depend on Flutter for `WidgetsBindingObserver`-based session
 lifecycle handling.
 
 See each package's own README for its role, dependencies, and a usage
 example specific to it:
 
-- [`packages/flutter_otel_api`](packages/flutter_otel_api/README.md)
-- [`packages/flutter_otel_sdk`](packages/flutter_otel_sdk/README.md)
-- [`packages/flutter_otel_exporter_otlp_http`](packages/flutter_otel_exporter_otlp_http/README.md)
+- [`packages/dart_otel_api`](packages/dart_otel_api/README.md)
+- [`packages/dart_otel_sdk`](packages/dart_otel_sdk/README.md)
+- [`packages/dart_otel_exporter_otlp_http`](packages/dart_otel_exporter_otlp_http/README.md)
 - [`packages/flutter_otel`](packages/flutter_otel/README.md)
-- [`packages/flutter_otel_instrumentation_dio`](packages/flutter_otel_instrumentation_dio/README.md)
-- [`packages/flutter_otel_instrumentation_messaging`](packages/flutter_otel_instrumentation_messaging/README.md)
+- [`packages/dart_otel_instrumentation_dio`](packages/dart_otel_instrumentation_dio/README.md)
+- [`packages/dart_otel_instrumentation_messaging`](packages/dart_otel_instrumentation_messaging/README.md)
 - [`packages/flutter_otel_native`](packages/flutter_otel_native/README.md)
 - [`packages/flutter_otel_device_info`](packages/flutter_otel_device_info/README.md)
 
@@ -105,21 +105,21 @@ dependencies:
 # so pub can't resolve them on its own — pin them here too, at the same
 # ref, or pub get will fail.
 dependency_overrides:
-  flutter_otel_api:
+  dart_otel_api:
     git:
       url: https://github.com/cedricziel/flutter-otel
       ref: main
-      path: packages/flutter_otel_api
-  flutter_otel_sdk:
+      path: packages/dart_otel_api
+  dart_otel_sdk:
     git:
       url: https://github.com/cedricziel/flutter-otel
       ref: main
-      path: packages/flutter_otel_sdk
-  flutter_otel_exporter_otlp_http:
+      path: packages/dart_otel_sdk
+  dart_otel_exporter_otlp_http:
     git:
       url: https://github.com/cedricziel/flutter-otel
       ref: main
-      path: packages/flutter_otel_exporter_otlp_http
+      path: packages/dart_otel_exporter_otlp_http
 ```
 
 ```dart
@@ -190,7 +190,7 @@ up the active span's `traceId`/`spanId`, unless the caller already set them
 explicitly. This is what makes trace-to-log correlation "automatic": no log
 call site needs to know about tracing at all.
 
-For outgoing HTTP requests, `flutter_otel_instrumentation_dio`'s
+For outgoing HTTP requests, `dart_otel_instrumentation_dio`'s
 `DioOTelInterceptor` accepts an optional `tracer:` parameter that starts a
 CLIENT span per request and injects a W3C `traceparent` header, joining the
 request into whatever trace is active when it's made — see that package's
@@ -203,7 +203,7 @@ README for details.
 - **An `onStart` `SpanProcessor` hook** — only `onEnd` exists, since nothing
   in this SDK needs to observe a span before it finishes.
 - **Metrics** — the core has a `Meter`/`MeterProvider` stub (see
-  `flutter_otel_api`), but no metrics pipeline exists yet.
+  `dart_otel_api`), but no metrics pipeline exists yet.
 - **`tracestate` propagation** — `formatTraceparent`/`parseTraceparent`
   handle the W3C `traceparent` header only; this SDK has no vendor-specific
   state to carry in `tracestate` and doesn't round-trip anyone else's.

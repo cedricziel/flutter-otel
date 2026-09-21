@@ -1,0 +1,67 @@
+import 'package:dart_otel_api/dart_otel_api.dart';
+
+import 'sdk_span.dart';
+
+/// Concrete [Tracer] backed by a [SpanProcessor].
+///
+/// Resolves the parent span context as: an explicit [startSpan]
+/// `parentContext` argument, then the ambient [Span.current], then no
+/// parent (a root span).
+class SdkTracer implements Tracer {
+  SdkTracer({
+    required this.name,
+    required this.version,
+    required SpanProcessor processor,
+  }) : _processor = processor;
+
+  @override
+  final String name;
+
+  /// This tracer's instrumentation scope version, if any.
+  final String? version;
+
+  final SpanProcessor _processor;
+
+  @override
+  Span startSpan(
+    String name, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+    SpanContext? parentContext,
+    List<SpanLink> links = const [],
+  }) {
+    final resolvedParent = parentContext ?? Span.current?.spanContext;
+    return SdkSpan(
+      name: name,
+      kind: kind,
+      parentContext: resolvedParent,
+      parentSpanId: resolvedParent?.spanId,
+      processor: _processor,
+      attributes: attributes,
+      links: links,
+      scopeName: this.name,
+      scopeVersion: version,
+    );
+  }
+
+  @override
+  Future<T> startActiveSpan<T>(
+    String name,
+    Future<T> Function(Span span) body, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+    List<SpanLink> links = const [],
+  }) async {
+    final span =
+        startSpan(name, kind: kind, attributes: attributes, links: links);
+    try {
+      return await Span.runWithSpan(span, () => body(span));
+    } catch (e, stackTrace) {
+      span.recordException(e, stackTrace: stackTrace);
+      span.setStatus(StatusCode.error, description: e.toString());
+      rethrow;
+    } finally {
+      span.end();
+    }
+  }
+}

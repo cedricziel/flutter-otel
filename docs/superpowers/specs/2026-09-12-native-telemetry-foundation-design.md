@@ -40,7 +40,7 @@ existing ones, structured as a Flutter plugin:
 
 ```
 packages/flutter_otel_native/
-  pubspec.yaml            # platforms: ios, macos; depends on flutter_otel_api + flutter
+  pubspec.yaml            # platforms: ios, macos; depends on dart_otel_api + flutter
   lib/
     flutter_otel_native.dart
     src/
@@ -54,15 +54,15 @@ packages/flutter_otel_native/
     Classes/
 ```
 
-It depends on `flutter_otel_api` (for `SpanData`, `LogRecord`, `SpanContext`
+It depends on `dart_otel_api` (for `SpanData`, `LogRecord`, `SpanContext`
 shapes) and `flutter` (for `MethodChannel`), the same dependency shape as
-`flutter_otel_sdk`. It does not depend on `flutter_otel_sdk` directly —
+`dart_otel_sdk`. It does not depend on `dart_otel_sdk` directly —
 `NativeTelemetryBridge.drainAndForward` takes a `TracerProvider` and
 `LoggerProvider` (the interfaces), not the concrete SDK, so it stays
 testable without pulling in the full SDK.
 
 Consuming apps add `flutter_otel_native` alongside `flutter_otel` the same
-way `flutter_otel_instrumentation_dio` is added today (git dependency +
+way `dart_otel_instrumentation_dio` is added today (git dependency +
 `dependency_overrides`, per the root README's existing pattern).
 
 ## Data model & wire format
@@ -76,7 +76,7 @@ from logs so both signals share one file and one drain call:
 {"kind": "log", "timeUnixNano": "1700000000010000000", "severity": "info", "body": "native record", "attributes": {}, "traceId": null, "spanId": null}
 ```
 
-- Field names and shapes mirror `SpanData`/`LogRecord` (`flutter_otel_api`)
+- Field names and shapes mirror `SpanData`/`LogRecord` (`dart_otel_api`)
   directly so `native_record_codec.dart` is a near-literal
   `fromJson`/`toJson`, not a translation layer with its own semantics.
 - IDs use exactly the format `SpanContext` already validates: a trace ID is
@@ -193,7 +193,7 @@ since forcing every `flutter_otel` user to depend on
 Today there is no way to feed an already-finished `SpanData`/`LogRecord`
 into the pipeline — `SpanProcessor.onEnd`/`LogRecordProcessor.onEmit` exist,
 but aren't reachable from `TracerProvider`/`LoggerProvider`. This spec adds
-one additive method to each interface in `flutter_otel_api`:
+one additive method to each interface in `dart_otel_api`:
 
 ```dart
 abstract class TracerProvider {
@@ -235,10 +235,10 @@ the core.
 - **Session correlation:** `NativeTelemetryBridge.setSessionId` tags
   subsequent native records with a `session.id` attribute, mirroring how
   logs already correlate to `SessionManager.sessionId` in
-  `flutter_otel_sdk`. The consumer app is responsible for calling it at
+  `dart_otel_sdk`. The consumer app is responsible for calling it at
   startup and on session rollover — this spec doesn't hook
   `SessionManager` automatically, keeping `flutter_otel_native`
-  independent of `flutter_otel_sdk`.
+  independent of `dart_otel_sdk`.
 
 ## Reliability
 
@@ -263,7 +263,7 @@ the core.
   correct `ingestSpan`/`ingestLogRecord` calls on fake `TracerProvider`/
   `LoggerProvider` test doubles, `setSessionId`/`setCurrentTraceContext`
   argument marshaling.
-- **`flutter_otel_api` core change:** unit tests for
+- **`dart_otel_api` core change:** unit tests for
   `SdkTracerProvider.ingestSpan`/`SdkLoggerProvider.ingestLogRecord`
   passthrough to the configured processor.
 - No end-to-end (real simulator/device) integration test in this spec —

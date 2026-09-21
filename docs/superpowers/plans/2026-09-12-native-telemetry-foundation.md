@@ -4,7 +4,7 @@
 
 **Goal:** Give native (Swift) iOS/macOS code a way to record finished spans/log records — even before or without a running Dart isolate — and hand them into `flutter-otel`'s existing OTLP export pipeline, as the shared foundation for later cold-start, crash-capture, background-task, and native-networking work.
 
-**Architecture:** A new Flutter plugin package, `flutter_otel_native`, pairs a pure-Swift, Flutter-independent core (`NativeTelemetryCore`: ID generation, an NDJSON-backed on-disk queue, a recorder that defaults new records onto whatever trace/session context Dart last told it about) with a thin `FlutterPlugin` that exposes it over one `MethodChannel`. On the Dart side, `NativeTelemetryBridge` drains that channel and decodes each NDJSON line into the existing `SpanData`/`LogRecord` types, then feeds them into two small additive methods — `TracerProvider.ingestSpan`/`LoggerProvider.ingestLogRecord` — added to `flutter_otel_api`'s core interfaces so an already-finished record can enter the processor/exporter pipeline without going through `Tracer.startSpan`.
+**Architecture:** A new Flutter plugin package, `flutter_otel_native`, pairs a pure-Swift, Flutter-independent core (`NativeTelemetryCore`: ID generation, an NDJSON-backed on-disk queue, a recorder that defaults new records onto whatever trace/session context Dart last told it about) with a thin `FlutterPlugin` that exposes it over one `MethodChannel`. On the Dart side, `NativeTelemetryBridge` drains that channel and decodes each NDJSON line into the existing `SpanData`/`LogRecord` types, then feeds them into two small additive methods — `TracerProvider.ingestSpan`/`LoggerProvider.ingestLogRecord` — added to `dart_otel_api`'s core interfaces so an already-finished record can enter the processor/exporter pipeline without going through `Tracer.startSpan`.
 
 **Tech Stack:** Dart 3 (pattern matching, sealed classes), Flutter plugin platform channels, Swift 5.9 / Swift Package Manager, XCTest, `flutter_test`.
 
@@ -14,7 +14,7 @@
 
 - Dart SDK constraint `^3.6.0`, Flutter constraint `>=3.27.0` (matches every existing Flutter-dependent package in this workspace).
 - New package platform floors: iOS 15.0, macOS 12.0 (matches Flutter's current plugin template defaults). Swift tools version 5.9.
-- `flutter_otel_native` depends on `flutter_otel_api` and `flutter` only — never on `flutter_otel_sdk` (per spec: `NativeTelemetryBridge` takes `TracerProvider`/`LoggerProvider` interfaces, not the concrete SDK).
+- `flutter_otel_native` depends on `dart_otel_api` and `flutter` only — never on `dart_otel_sdk` (per spec: `NativeTelemetryBridge` takes `TracerProvider`/`LoggerProvider` interfaces, not the concrete SDK).
 - MethodChannel name: `'flutter_otel_native'`.
 - Wire format (finalized here; every task must match these field names exactly):
   - Span line: `{"kind":"span","name":string,"traceId":string,"spanId":string,"parentSpanId":string?,"spanKind":"internal"|"server"|"client"|"producer"|"consumer","startTimeUnixNano":string,"endTimeUnixNano":string,"attributes":object,"events":[{"name":string,"timeUnixNano":string,"attributes":object}],"statusCode":"unset"|"ok"|"error","statusDescription":string?,"scopeName":string,"scopeVersion":string?}`
@@ -26,7 +26,7 @@
 - Native recording is **not** signal-handler-safe; that constraint belongs to a future crash-capture spec, not this one.
 - No automatic wiring: nothing in this plan calls `drainAndForward` from `OTelSdk.initialize`, and nothing calls `setCurrentTraceContext` automatically from `Span.current` changes. Both are primitives only.
 - **Plan-level simplification vs. the spec's phrasing:** the spec's platform-channel section describes an ack-style drain ("native clears... only after Dart's call returns successfully"). This plan implements the simpler, equivalent behavior of clearing the on-disk queue synchronously as part of producing the drain result (native reads-then-clears in one call), which trades a small crash-during-flush loss window for much less complexity. This is called out to the user before implementation begins (see chat) since it's a real, if minor, behavior difference from the spec's wording — not a silent deviation.
-- `RecordQueue`'s default cap is 2048 records, matching `OTelSdkConfig.maxQueueSize`'s existing default exactly (`packages/flutter_otel_sdk/lib/src/otel_sdk_config.dart:17`).
+- `RecordQueue`'s default cap is 2048 records, matching `OTelSdkConfig.maxQueueSize`'s existing default exactly (`packages/dart_otel_sdk/lib/src/otel_sdk_config.dart:17`).
 - Semantic commit per task (`feat:`, `test:` only where a task is test-only, `docs:`, `chore:`); each task's commit bundles its test(s) and implementation together, matching this repo's existing history style.
 
 ---
@@ -35,19 +35,19 @@
 
 **Files:**
 
-- Modify: `packages/flutter_otel_api/lib/src/trace/tracer_provider.dart`
-- Modify: `packages/flutter_otel_sdk/lib/src/sdk_tracer_provider.dart`
-- Test: `packages/flutter_otel_api/test/tracer_test.dart`
-- Test: `packages/flutter_otel_sdk/test/sdk_tracer_provider_test.dart`
+- Modify: `packages/dart_otel_api/lib/src/trace/tracer_provider.dart`
+- Modify: `packages/dart_otel_sdk/lib/src/sdk_tracer_provider.dart`
+- Test: `packages/dart_otel_api/test/tracer_test.dart`
+- Test: `packages/dart_otel_sdk/test/sdk_tracer_provider_test.dart`
 
 **Interfaces:**
 
-- Produces: `TracerProvider.ingestSpan(SpanData span)` (abstract, in `flutter_otel_api`), used directly by `NativeTelemetryBridge.drainAndForward` in Task 4.
-- Consumes: `SpanData` (`flutter_otel_api/lib/src/trace/span_data.dart`, already exists), `SpanProcessor.onEnd(SpanData)` (already exists, called internally by `SdkTracerProvider.ingestSpan`).
+- Produces: `TracerProvider.ingestSpan(SpanData span)` (abstract, in `dart_otel_api`), used directly by `NativeTelemetryBridge.drainAndForward` in Task 4.
+- Consumes: `SpanData` (`dart_otel_api/lib/src/trace/span_data.dart`, already exists), `SpanProcessor.onEnd(SpanData)` (already exists, called internally by `SdkTracerProvider.ingestSpan`).
 
 - [ ] **Step 1: Write the failing tests**
 
-Add to `packages/flutter_otel_api/test/tracer_test.dart`, inside the existing `group('NoopTracerProvider', () { ... })` block (after the `forceFlush and shutdown` test):
+Add to `packages/dart_otel_api/test/tracer_test.dart`, inside the existing `group('NoopTracerProvider', () { ... })` block (after the `forceFlush and shutdown` test):
 
 ```dart
     test('ingestSpan does not throw', () {
@@ -78,7 +78,7 @@ Replace that placeholder body — `NoopTracer.startSpan` returns a `Span`, not a
     });
 ```
 
-Add to `packages/flutter_otel_sdk/test/sdk_tracer_provider_test.dart`, as a new top-level `group` after the existing `group('SdkTracerProvider.forceFlush/shutdown', ...)`:
+Add to `packages/dart_otel_sdk/test/sdk_tracer_provider_test.dart`, as a new top-level `group` after the existing `group('SdkTracerProvider.forceFlush/shutdown', ...)`:
 
 ```dart
   group('SdkTracerProvider.ingestSpan', () {
@@ -122,15 +122,15 @@ Add to `packages/flutter_otel_sdk/test/sdk_tracer_provider_test.dart`, as a new 
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd packages/flutter_otel_api && dart test test/tracer_test.dart`
+Run: `cd packages/dart_otel_api && dart test test/tracer_test.dart`
 Expected: FAIL — `The method 'ingestSpan' isn't defined for the type 'NoopTracerProvider'`.
 
-Run: `cd packages/flutter_otel_sdk && flutter test test/sdk_tracer_provider_test.dart`
+Run: `cd packages/dart_otel_sdk && flutter test test/sdk_tracer_provider_test.dart`
 Expected: FAIL — `The method 'ingestSpan' isn't defined for the type 'SdkTracerProvider'`.
 
 - [ ] **Step 3: Add `ingestSpan` to the `TracerProvider` interface and `NoopTracerProvider`**
 
-In `packages/flutter_otel_api/lib/src/trace/tracer_provider.dart`, add the import and the two method additions:
+In `packages/dart_otel_api/lib/src/trace/tracer_provider.dart`, add the import and the two method additions:
 
 ```dart
 import 'span_data.dart';
@@ -175,7 +175,7 @@ class NoopTracerProvider implements TracerProvider {
 
 - [ ] **Step 4: Implement `ingestSpan` in `SdkTracerProvider`**
 
-In `packages/flutter_otel_sdk/lib/src/sdk_tracer_provider.dart`, add after `getTracer`:
+In `packages/dart_otel_sdk/lib/src/sdk_tracer_provider.dart`, add after `getTracer`:
 
 ```dart
   @override
@@ -184,22 +184,22 @@ In `packages/flutter_otel_sdk/lib/src/sdk_tracer_provider.dart`, add after `getT
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `cd packages/flutter_otel_api && dart test test/tracer_test.dart`
+Run: `cd packages/dart_otel_api && dart test test/tracer_test.dart`
 Expected: PASS
 
-Run: `cd packages/flutter_otel_sdk && flutter test test/sdk_tracer_provider_test.dart`
+Run: `cd packages/dart_otel_sdk && flutter test test/sdk_tracer_provider_test.dart`
 Expected: PASS
 
 - [ ] **Step 6: Analyze and commit**
 
-Run: `cd packages/flutter_otel_api && dart analyze && cd ../flutter_otel_sdk && flutter analyze`
+Run: `cd packages/dart_otel_api && dart analyze && cd ../dart_otel_sdk && flutter analyze`
 Expected: no issues.
 
 ```bash
-git add packages/flutter_otel_api/lib/src/trace/tracer_provider.dart \
-        packages/flutter_otel_api/test/tracer_test.dart \
-        packages/flutter_otel_sdk/lib/src/sdk_tracer_provider.dart \
-        packages/flutter_otel_sdk/test/sdk_tracer_provider_test.dart
+git add packages/dart_otel_api/lib/src/trace/tracer_provider.dart \
+        packages/dart_otel_api/test/tracer_test.dart \
+        packages/dart_otel_sdk/lib/src/sdk_tracer_provider.dart \
+        packages/dart_otel_sdk/test/sdk_tracer_provider_test.dart
 git commit -m "feat(otel-api): add TracerProvider.ingestSpan for pre-finished spans"
 ```
 
@@ -209,18 +209,18 @@ git commit -m "feat(otel-api): add TracerProvider.ingestSpan for pre-finished sp
 
 **Files:**
 
-- Modify: `packages/flutter_otel_api/lib/src/logs/logger_provider.dart`
-- Modify: `packages/flutter_otel_sdk/lib/src/sdk_logger_provider.dart`
-- Test: `packages/flutter_otel_sdk/test/sdk_logger_provider_test.dart`
+- Modify: `packages/dart_otel_api/lib/src/logs/logger_provider.dart`
+- Modify: `packages/dart_otel_sdk/lib/src/sdk_logger_provider.dart`
+- Test: `packages/dart_otel_sdk/test/sdk_logger_provider_test.dart`
 
 **Interfaces:**
 
-- Produces: `LoggerProvider.ingestLogRecord(LogRecord record)` (abstract, in `flutter_otel_api`), used directly by `NativeTelemetryBridge.drainAndForward` in Task 4.
+- Produces: `LoggerProvider.ingestLogRecord(LogRecord record)` (abstract, in `dart_otel_api`), used directly by `NativeTelemetryBridge.drainAndForward` in Task 4.
 - Consumes: `LogRecord` (already exists), `LogRecordProcessor.onEmit(LogRecord)` (already exists).
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `packages/flutter_otel_sdk/test/sdk_logger_provider_test.dart`, as a new top-level `group`:
+Add to `packages/dart_otel_sdk/test/sdk_logger_provider_test.dart`, as a new top-level `group`:
 
 ```dart
   group('SdkLoggerProvider.ingestLogRecord', () {
@@ -238,16 +238,16 @@ Add to `packages/flutter_otel_sdk/test/sdk_logger_provider_test.dart`, as a new 
   });
 ```
 
-(`allRecords` is a real getter on `FakeLogRecordExporter` — `packages/flutter_otel_sdk/test/support/fake_log_record_exporter.dart:46` — that flattens `exportedBatches`, mirroring `FakeSpanExporter.allSpans`.)
+(`allRecords` is a real getter on `FakeLogRecordExporter` — `packages/dart_otel_sdk/test/support/fake_log_record_exporter.dart:46` — that flattens `exportedBatches`, mirroring `FakeSpanExporter.allSpans`.)
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd packages/flutter_otel_sdk && flutter test test/sdk_logger_provider_test.dart`
+Run: `cd packages/dart_otel_sdk && flutter test test/sdk_logger_provider_test.dart`
 Expected: FAIL — `The method 'ingestLogRecord' isn't defined for the type 'SdkLoggerProvider'`.
 
 - [ ] **Step 3: Add `ingestLogRecord` to the `LoggerProvider` interface**
 
-In `packages/flutter_otel_api/lib/src/logs/logger_provider.dart`:
+In `packages/dart_otel_api/lib/src/logs/logger_provider.dart`:
 
 ```dart
 import 'log_record.dart';
@@ -277,7 +277,7 @@ abstract class LoggerProvider {
 
 - [ ] **Step 4: Implement `ingestLogRecord` in `SdkLoggerProvider`**
 
-In `packages/flutter_otel_sdk/lib/src/sdk_logger_provider.dart`, add inside the `SdkLoggerProvider` class, after `getLogger`:
+In `packages/dart_otel_sdk/lib/src/sdk_logger_provider.dart`, add inside the `SdkLoggerProvider` class, after `getLogger`:
 
 ```dart
   @override
@@ -286,18 +286,18 @@ In `packages/flutter_otel_sdk/lib/src/sdk_logger_provider.dart`, add inside the 
 
 - [ ] **Step 5: Run the test to verify it passes**
 
-Run: `cd packages/flutter_otel_sdk && flutter test test/sdk_logger_provider_test.dart`
+Run: `cd packages/dart_otel_sdk && flutter test test/sdk_logger_provider_test.dart`
 Expected: PASS
 
 - [ ] **Step 6: Analyze and commit**
 
-Run: `cd packages/flutter_otel_api && dart analyze && cd ../flutter_otel_sdk && flutter analyze`
+Run: `cd packages/dart_otel_api && dart analyze && cd ../dart_otel_sdk && flutter analyze`
 Expected: no issues.
 
 ```bash
-git add packages/flutter_otel_api/lib/src/logs/logger_provider.dart \
-        packages/flutter_otel_sdk/lib/src/sdk_logger_provider.dart \
-        packages/flutter_otel_sdk/test/sdk_logger_provider_test.dart
+git add packages/dart_otel_api/lib/src/logs/logger_provider.dart \
+        packages/dart_otel_sdk/lib/src/sdk_logger_provider.dart \
+        packages/dart_otel_sdk/test/sdk_logger_provider_test.dart
 git commit -m "feat(otel-api): add LoggerProvider.ingestLogRecord for pre-finished records"
 ```
 
@@ -316,7 +316,7 @@ git commit -m "feat(otel-api): add LoggerProvider.ingestLogRecord for pre-finish
 
 **Interfaces:**
 
-- Consumes: `SpanData`, `SpanContext`, `SpanKind`, `StatusCode`, `SpanEvent`, `LogRecord`, `LogSeverity`, `defaultInstrumentationScopeName` (all from `flutter_otel_api`, already exist).
+- Consumes: `SpanData`, `SpanContext`, `SpanKind`, `StatusCode`, `SpanEvent`, `LogRecord`, `LogSeverity`, `defaultInstrumentationScopeName` (all from `dart_otel_api`, already exist).
 - Produces: `sealed class NativeRecord`, `class NativeSpanRecord extends NativeRecord` (field `spanData`), `class NativeLogRecord extends NativeRecord` (field `logRecord`), `NativeRecord? decodeNativeRecordLine(String line)` — used by `NativeTelemetryBridge.drainAndForward` in Task 4.
 
 - [ ] **Step 1: Create the package manifest**
@@ -340,7 +340,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_otel_api: ^0.1.0
+  dart_otel_api: ^0.1.0
 
 dev_dependencies:
   flutter_test:
@@ -358,7 +358,7 @@ flutter:
         pluginClass: FlutterOtelNativePlugin
 ```
 
-`packages/flutter_otel_native/analysis_options.yaml` (matches `flutter_otel_sdk`'s, the other Flutter-dependent package):
+`packages/flutter_otel_native/analysis_options.yaml` (matches `dart_otel_sdk`'s, the other Flutter-dependent package):
 
 ```yaml
 analyzer:
@@ -377,11 +377,11 @@ Register the new package as a workspace member — in the root `pubspec.yaml`, a
 
 ```yaml
 workspace:
-  - packages/flutter_otel_api
-  - packages/flutter_otel_sdk
-  - packages/flutter_otel_exporter_otlp_http
+  - packages/dart_otel_api
+  - packages/dart_otel_sdk
+  - packages/dart_otel_exporter_otlp_http
   - packages/flutter_otel
-  - packages/flutter_otel_instrumentation_dio
+  - packages/dart_otel_instrumentation_dio
   - packages/flutter_otel_native
 ```
 
@@ -395,7 +395,7 @@ Expected: resolves without error (the package has no `lib/` content yet, which i
 `packages/flutter_otel_native/test/native_record_codec_test.dart`:
 
 ```dart
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 import 'package:flutter_otel_native/src/native_record_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -510,7 +510,7 @@ Expected: FAIL — `Target of URI doesn't exist: 'package:flutter_otel_native/sr
 ```dart
 import 'dart:convert';
 
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 
 /// One decoded line from the native queue: either a span or a log record.
 sealed class NativeRecord {}
@@ -649,7 +649,7 @@ git commit -m "feat(otel-native): scaffold flutter_otel_native and add NativeRec
 `packages/flutter_otel_native/test/support/fake_tracer_provider.dart`:
 
 ```dart
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 
 /// A [TracerProvider] test double that records every span passed to
 /// [ingestSpan] instead of exporting it anywhere.
@@ -674,7 +674,7 @@ class FakeTracerProvider implements TracerProvider {
 `packages/flutter_otel_native/test/support/fake_logger_provider.dart`:
 
 ```dart
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 
 /// A [LoggerProvider] test double that records every record passed to
 /// [ingestLogRecord] instead of exporting it anywhere.
@@ -815,7 +815,7 @@ Expected: FAIL — `Target of URI doesn't exist` / `NativeTelemetryBridge` undef
 
 ```dart
 import 'package:flutter/services.dart';
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 
 import 'native_record_codec.dart';
 
@@ -920,12 +920,12 @@ git commit -m "feat(otel-native): add NativeTelemetryBridge.drainAndForward"
 
 **Interfaces:**
 
-- Consumes: `SpanContext` (`flutter_otel_api`, already exists).
+- Consumes: `SpanContext` (`dart_otel_api`, already exists).
 - Produces: `NativeTelemetryBridge.setSessionId(String sessionId)`, `NativeTelemetryBridge.setCurrentTraceContext(SpanContext context)`, `NativeTelemetryBridge.clearCurrentTraceContext()` — these invoke channel methods `'setSessionId'`, `'setCurrentTraceContext'`, `'clearCurrentTraceContext'`, matched by the Swift plugin implemented in Task 9.
 
 - [ ] **Step 1: Write the failing tests**
 
-Add to `packages/flutter_otel_native/test/native_telemetry_bridge_test.dart`, a new top-level test group (needs `import 'package:flutter_otel_api/flutter_otel_api.dart';` added at the top for `SpanContext`):
+Add to `packages/flutter_otel_native/test/native_telemetry_bridge_test.dart`, a new top-level test group (needs `import 'package:dart_otel_api/dart_otel_api.dart';` added at the top for `SpanContext`):
 
 ```dart
   group('session and trace-context primitives', () {
@@ -1985,7 +1985,7 @@ git commit -m "feat(otel-native): wire the iOS and macOS Flutter plugin implemen
 
 **Interfaces:**
 
-- Consumes: `NativeTelemetryBridge`, `NativeDrainResult` (Task 4/5); `TracerProvider`, `LoggerProvider`, `SpanData`, `LogRecord`, `NoopTracer` (`flutter_otel_api`).
+- Consumes: `NativeTelemetryBridge`, `NativeDrainResult` (Task 4/5); `TracerProvider`, `LoggerProvider`, `SpanData`, `LogRecord`, `NoopTracer` (`dart_otel_api`).
 
 This is the first point in the plan where the whole stack — Dart bridge, `MethodChannel`, registered `FlutterPlugin`, `NativeTelemetryCore` compiled via CocoaPods — actually has to build and run together, so it is the closest thing this plan has to an end-to-end check for Task 9.
 
@@ -2002,7 +2002,7 @@ flutter create --template=plugin --platforms=ios,macos --org com.cedricziel --pr
 
 - [ ] **Step 2: Replace the generated example pubspec's plugin dependency section**
 
-Open `packages/flutter_otel_native/example/pubspec.yaml`. Under `dependencies:`, replace whatever it generated for `flutter_otel_native` and add `flutter_otel_api` as a sibling path dependency (the example isn't a pub workspace member, so it resolves independently, like any plugin's own example app):
+Open `packages/flutter_otel_native/example/pubspec.yaml`. Under `dependencies:`, replace whatever it generated for `flutter_otel_native` and add `dart_otel_api` as a sibling path dependency (the example isn't a pub workspace member, so it resolves independently, like any plugin's own example app):
 
 ```yaml
 dependencies:
@@ -2010,8 +2010,8 @@ dependencies:
     sdk: flutter
   flutter_otel_native:
     path: ../
-  flutter_otel_api:
-    path: ../../flutter_otel_api
+  dart_otel_api:
+    path: ../../dart_otel_api
 ```
 
 Leave the rest of the generated file (the `dev_dependencies`, `flutter:` section) as-is.
@@ -2022,7 +2022,7 @@ Leave the rest of the generated file (the `dev_dependencies`, `flutter:` section
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 import 'package:flutter_otel_native/flutter_otel_native.dart';
 
 void main() {
@@ -2133,7 +2133,7 @@ git commit -m "feat(otel-native): add an example app that smoke-tests the native
 
 - [ ] **Step 1: Add `flutter_otel_native` to the existing Linux job**
 
-In `.github/workflows/ci.yml`, insert this block after the `flutter_otel_sdk` steps and before the `flutter_otel` (umbrella) steps:
+In `.github/workflows/ci.yml`, insert this block after the `dart_otel_sdk` steps and before the `flutter_otel` (umbrella) steps:
 
 ```yaml
 # --- flutter_otel_native: depends on Flutter (MethodChannel). Only
@@ -2214,12 +2214,12 @@ in the repo root for the full design and what's explicitly deferred.
 ## Position in the dependency graph
 ```
 
-flutter_otel_api ──> flutter_otel_native
+dart_otel_api ──> flutter_otel_native
 
 ````
 
-Depends on `flutter_otel_api` and `flutter` (for `MethodChannel`) only —
-never on `flutter_otel_sdk`, so it stays usable against any
+Depends on `dart_otel_api` and `flutter` (for `MethodChannel`) only —
+never on `dart_otel_sdk`, so it stays usable against any
 `TracerProvider`/`LoggerProvider` implementation, not just the concrete SDK.
 
 ## What's in here
@@ -2227,7 +2227,7 @@ never on `flutter_otel_sdk`, so it stays usable against any
 - **`NativeTelemetryBridge`** (Dart) — drains the native on-disk queue over
   a `MethodChannel` and forwards each record into a `TracerProvider`/
   `LoggerProvider` via the `ingestSpan`/`ingestLogRecord` methods added to
-  `flutter_otel_api` alongside this package. Also exposes
+  `dart_otel_api` alongside this package. Also exposes
   `setSessionId`/`setCurrentTraceContext`/`clearCurrentTraceContext` so
   native records can be tagged with the current session/trace.
 - **`NativeTelemetryRecorder`** (Swift, in the `NativeTelemetryCore`
@@ -2277,11 +2277,11 @@ app (e.g. on resume), until a later spec adds automatic wiring.
 
 - [ ] **Step 2: Update the root README**
 
-In `README.md`, add `flutter_otel_native` to the workspace layout tree (after the `flutter_otel_instrumentation_dio` entry):
+In `README.md`, add `flutter_otel_native` to the workspace layout tree (after the `dart_otel_instrumentation_dio` entry):
 
 ```
 
-    flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
+    dart_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
                                          # including CLIENT spans + traceparent
                                          # propagation when a Tracer is given
     flutter_otel_native/                # native (Swift) telemetry foundation
@@ -2296,7 +2296,7 @@ And to the package list just below it:
 
 ```
 
-- [`packages/flutter_otel_instrumentation_dio`](packages/flutter_otel_instrumentation_dio/README.md)
+- [`packages/dart_otel_instrumentation_dio`](packages/dart_otel_instrumentation_dio/README.md)
 - [`packages/flutter_otel_native`](packages/flutter_otel_native/README.md)
 
 ````

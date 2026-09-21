@@ -1,4 +1,4 @@
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 
 /// A [TracerProvider] test double that records every span passed to
 /// [ingestSpan] instead of exporting it anywhere.

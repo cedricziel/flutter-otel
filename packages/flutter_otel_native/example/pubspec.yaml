@@ -18,8 +18,8 @@ dependencies:
     sdk: flutter
   flutter_otel_native:
     path: ../
-  flutter_otel_api:
-    path: ../../flutter_otel_api
+  dart_otel_api:
+    path: ../../dart_otel_api
 
 dev_dependencies:
   integration_test:
@@ -35,8 +35,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 dependency_overrides:
-  flutter_otel_api:
-    path: ../../flutter_otel_api
+  dart_otel_api:
+    path: ../../dart_otel_api
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
