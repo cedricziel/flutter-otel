@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "dart",
+  "bootstrap-sha": "e31c5db91705f8d3264f66d28f58b5d03a9e25d7",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "include-v-in-tag": true,
+  "packages": {
+    "packages/dart_otel_api": {
+      "package-name": "dart_otel_api"
+    },
+    "packages/dart_otel_sdk": {
+      "package-name": "dart_otel_sdk"
+    },
+    "packages/dart_otel_exporter_otlp_http": {
+      "package-name": "dart_otel_exporter_otlp_http"
+    },
+    "packages/dart_otel_instrumentation_dio": {
+      "package-name": "dart_otel_instrumentation_dio"
+    },
+    "packages/dart_otel_instrumentation_http": {
+      "package-name": "dart_otel_instrumentation_http"
+    },
+    "packages/dart_otel_instrumentation_messaging": {
+      "package-name": "dart_otel_instrumentation_messaging"
+    },
+    "packages/flutter_otel": {
+      "package-name": "flutter_otel"
+    },
+    "packages/flutter_otel_native": {
+      "package-name": "flutter_otel_native"
+    },
+    "packages/flutter_otel_device_info": {
+      "package-name": "flutter_otel_device_info"
+    }
+  },
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "perf",
+      "section": "Performance"
+    },
+    {
+      "type": "revert",
+      "section": "Reverts"
+    },
+    {
+      "type": "docs",
+      "section": "Documentation"
+    },
+    {
+      "type": "build",
+      "section": "Build System",
+      "hidden": true
+    },
+    {
+      "type": "ci",
+      "section": "Continuous Integration",
+      "hidden": true
+    },
+    {
+      "type": "chore",
+      "section": "Miscellaneous",
+      "hidden": true
+    },
+    {
+      "type": "refactor",
+      "section": "Code Refactoring",
+      "hidden": true
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    }
+  ]
+}
