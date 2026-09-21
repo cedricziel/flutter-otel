@@ -14,7 +14,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_otel_api: ^0.1.0
+  dart_otel_api: ^0.1.0
 
 dev_dependencies:
   flutter_test:

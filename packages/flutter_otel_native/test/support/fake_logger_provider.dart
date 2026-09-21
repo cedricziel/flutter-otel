@@ -1,4 +1,4 @@
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 
 /// A [LoggerProvider] test double that records every record passed to
 /// [ingestLogRecord] instead of exporting it anywhere.

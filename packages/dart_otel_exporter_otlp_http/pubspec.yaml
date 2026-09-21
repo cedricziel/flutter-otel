@@ -1,0 +1,20 @@
+name: dart_otel_exporter_otlp_http
+description: >
+  OTLP/HTTP (JSON-encoded) log exporter for flutter_otel. Pure Dart, no
+  Flutter dependency, so it also works from non-Flutter Dart targets
+  (server, CLI, web).
+version: 0.1.0
+homepage: https://github.com/cedricziel/flutter-otel
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  dart_otel_api: ^0.1.0
+  http: ^1.2.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+
+resolution: workspace

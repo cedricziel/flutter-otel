@@ -1,7 +1,7 @@
 /// flutter_otel: an OpenTelemetry SDK for Flutter apps.
 ///
-/// This umbrella package re-exports [flutter_otel_api], [flutter_otel_sdk],
-/// and [flutter_otel_exporter_otlp_http] so a single import gives you the
+/// This umbrella package re-exports [dart_otel_api], [dart_otel_sdk],
+/// and [dart_otel_exporter_otlp_http] so a single import gives you the
 /// full public API:
 ///
 /// ```dart
@@ -11,9 +11,9 @@
 /// See the package README for a usage example.
 library;
 
-export 'package:flutter_otel_api/flutter_otel_api.dart';
-export 'package:flutter_otel_exporter_otlp_http/flutter_otel_exporter_otlp_http.dart';
-export 'package:flutter_otel_sdk/flutter_otel_sdk.dart';
+export 'package:dart_otel_api/dart_otel_api.dart';
+export 'package:dart_otel_exporter_otlp_http/dart_otel_exporter_otlp_http.dart';
+export 'package:dart_otel_sdk/dart_otel_sdk.dart';
 
 export 'src/app_event_logger.dart';
 export 'src/default_session_manager.dart';

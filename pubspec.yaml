@@ -5,11 +5,11 @@ environment:
   sdk: ^3.6.0
 
 workspace:
-  - packages/flutter_otel_api
-  - packages/flutter_otel_sdk
-  - packages/flutter_otel_exporter_otlp_http
+  - packages/dart_otel_api
+  - packages/dart_otel_sdk
+  - packages/dart_otel_exporter_otlp_http
   - packages/flutter_otel
-  - packages/flutter_otel_instrumentation_dio
-  - packages/flutter_otel_instrumentation_messaging
+  - packages/dart_otel_instrumentation_dio
+  - packages/dart_otel_instrumentation_messaging
   - packages/flutter_otel_native
   - packages/flutter_otel_device_info

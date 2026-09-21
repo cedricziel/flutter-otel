@@ -1,4 +1,4 @@
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 import 'package:flutter_otel_native/src/native_record_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 

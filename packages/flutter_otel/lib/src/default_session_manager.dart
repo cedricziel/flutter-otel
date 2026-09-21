@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 import 'package:uuid/uuid.dart';
 
 /// Default [SessionManager]: generates a new session ID whenever [touch] is

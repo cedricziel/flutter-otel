@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter_otel_api/flutter_otel_api.dart';
+import 'package:dart_otel_api/dart_otel_api.dart';
 
 /// One decoded line from the native queue: either a span or a log record.
 sealed class NativeRecord {}
