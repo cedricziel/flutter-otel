@@ -3,7 +3,7 @@ description: >
   Traces a long-lived messaging connection (a WebSocket, a JSON-RPC socket)
   for flutter_otel: an HTTP client span for the upgrade, then a linked
   producer span per request and consumer span per server event.
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/cedricziel/flutter-otel
 
 environment:
