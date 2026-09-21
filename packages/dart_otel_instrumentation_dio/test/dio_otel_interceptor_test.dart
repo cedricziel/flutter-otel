@@ -187,8 +187,8 @@ void main() {
       expect(logger.emitted, hasLength(1));
       final record = logger.emitted.single;
       expect(record.severity, LogSeverity.debug);
-      expect(record.attributes['http.method'], 'GET');
-      expect(record.attributes['http.url'], options.uri.toString());
+      expect(record.attributes['http.request.method'], 'GET');
+      expect(record.attributes['url.full'], options.uri.toString());
 
       expect(handler.isCompleted, isTrue);
     });
@@ -219,7 +219,7 @@ void main() {
       interceptor.onRequest(options, handler);
 
       final record = logger.emitted.single;
-      final loggedUrl = record.attributes['http.url'] as String;
+      final loggedUrl = record.attributes['url.full'] as String;
       expect(loggedUrl, isNot(contains('super-secret')));
       expect(loggedUrl, isNot(contains('user:pass')));
       expect(loggedUrl, isNot(contains('access_token')));
@@ -244,7 +244,7 @@ void main() {
       interceptor.onRequest(options, handler);
 
       final record = logger.emitted.single;
-      final loggedUrl = record.attributes['http.url'] as String;
+      final loggedUrl = record.attributes['url.full'] as String;
       expect(loggedUrl, contains('super-secret'));
       expect(loggedUrl, contains('access_token'));
     });
@@ -278,8 +278,8 @@ void main() {
 
       final record = logger.emitted.last;
       expect(record.severity, LogSeverity.info);
-      expect(record.attributes['http.method'], 'GET');
-      expect(record.attributes['http.status_code'], 200);
+      expect(record.attributes['http.request.method'], 'GET');
+      expect(record.attributes['http.response.status_code'], 200);
       expect(record.attributes['duration_ms'], 42);
 
       expect(responseHandler.isCompleted, isTrue);
@@ -341,7 +341,7 @@ void main() {
 
       final record = logger.emitted.last;
       expect(record.severity, LogSeverity.error);
-      expect(record.attributes['http.method'], 'GET');
+      expect(record.attributes['http.request.method'], 'GET');
       expect(record.attributes.containsKey('error.type'), isTrue);
       expect(
         record.attributes['exception.type'],
@@ -364,7 +364,7 @@ void main() {
 
       final errorRecord =
           logger.emitted.firstWhere((r) => r.severity == LogSeverity.error);
-      expect(errorRecord.attributes['http.status_code'], 503);
+      expect(errorRecord.attributes['http.response.status_code'], 503);
     });
 
     test(
@@ -384,7 +384,7 @@ void main() {
 
       final errorRecord =
           logger.emitted.firstWhere((r) => r.severity == LogSeverity.error);
-      final loggedUrl = errorRecord.attributes['http.url'] as String;
+      final loggedUrl = errorRecord.attributes['url.full'] as String;
       expect(loggedUrl, isNot(contains('super-secret')));
       expect(loggedUrl, isNot(contains('user:pass')));
     });
@@ -427,8 +427,8 @@ void main() {
       expect(tracer.startedSpans, hasLength(1));
       final span = tracer.startedSpans.single;
       expect(span.kind, SpanKind.client);
-      expect(span.attributes['http.method'], 'GET');
-      expect(span.attributes['http.url'], options.uri.toString());
+      expect(span.attributes['http.request.method'], 'GET');
+      expect(span.attributes['url.full'], options.uri.toString());
 
       expect(
         options.headers['traceparent'],
@@ -453,7 +453,7 @@ void main() {
       final span = tracer.startedSpans.single;
       expect(span.ended, isTrue);
       expect(span.statusCode, StatusCode.ok);
-      expect(span.attributes['http.status_code'], 200);
+      expect(span.attributes['http.response.status_code'], 200);
       expect(handler.isCompleted, isTrue);
     });
 
@@ -542,7 +542,7 @@ void main() {
       final span = tracer.startedSpans.single;
       expect(span.ended, isTrue);
       expect(span.statusCode, StatusCode.error);
-      expect(span.attributes['http.status_code'], 503);
+      expect(span.attributes['http.response.status_code'], 503);
       expect(handler.isCompleted, isTrue);
     });
 

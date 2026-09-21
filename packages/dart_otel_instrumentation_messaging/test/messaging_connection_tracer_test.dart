@@ -38,9 +38,9 @@ void main() {
       final span = spanNamed('HTTP GET');
       expect(span.kind, SpanKind.client);
       expect(span.attributes, {
-        'http.method': 'GET',
+        'http.request.method': 'GET',
         'http.route': '/ws',
-        'http.status_code': 101,
+        'http.response.status_code': 101,
       });
       expect(span.status, StatusCode.ok);
       expect(span.ended, isTrue);

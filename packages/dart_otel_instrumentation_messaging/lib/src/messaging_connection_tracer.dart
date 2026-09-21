@@ -57,7 +57,7 @@ class MessagingConnectionTracer {
       () => tracer.startSpan(
         'HTTP GET',
         kind: SpanKind.client,
-        attributes: {'http.method': 'GET', 'http.route': route},
+        attributes: {'http.request.method': 'GET', 'http.route': route},
       ),
     );
     try {
@@ -65,7 +65,7 @@ class MessagingConnectionTracer {
       _guard(() {
         _connection = span?.spanContext;
         span
-          ?..setAttribute('http.status_code', 101)
+          ?..setAttribute('http.response.status_code', 101)
           ..setStatus(StatusCode.ok)
           ..end();
       });

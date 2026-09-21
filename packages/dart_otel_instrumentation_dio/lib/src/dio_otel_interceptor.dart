@@ -125,8 +125,8 @@ class DioOTelInterceptor extends Interceptor {
       _logger.debug(
         'HTTP request started',
         attributes: {
-          'http.method': options.method,
-          'http.url': _sanitizeUrl(options.uri),
+          'http.request.method': options.method,
+          'url.full': _sanitizeUrl(options.uri),
         },
       );
     });
@@ -137,8 +137,8 @@ class DioOTelInterceptor extends Interceptor {
         'HTTP ${options.method}',
         kind: SpanKind.client,
         attributes: {
-          'http.method': options.method,
-          'http.url': _sanitizeUrl(options.uri),
+          'http.request.method': options.method,
+          'url.full': _sanitizeUrl(options.uri),
         },
       );
       options.extra[_spanKey] = span;
@@ -162,10 +162,10 @@ class DioOTelInterceptor extends Interceptor {
       _logger.info(
         'HTTP request completed',
         attributes: {
-          'http.method': response.requestOptions.method,
-          'http.url': _sanitizeUrl(response.requestOptions.uri),
+          'http.request.method': response.requestOptions.method,
+          'url.full': _sanitizeUrl(response.requestOptions.uri),
           if (response.statusCode != null)
-            'http.status_code': response.statusCode,
+            'http.response.status_code': response.statusCode,
           if (durationMs != null) 'duration_ms': durationMs,
         },
       );
@@ -175,7 +175,7 @@ class DioOTelInterceptor extends Interceptor {
       if (span == null) return;
       final statusCode = response.statusCode;
       if (statusCode != null) {
-        span.setAttribute('http.status_code', statusCode);
+        span.setAttribute('http.response.status_code', statusCode);
       }
       // A CLIENT span must be marked as an error for 4xx/5xx responses per
       // OTel HTTP semantic conventions, even when Dio's `validateStatus` is
@@ -210,10 +210,10 @@ class DioOTelInterceptor extends Interceptor {
         error: err.error ?? err,
         stackTrace: err.stackTrace,
         attributes: {
-          'http.method': err.requestOptions.method,
-          'http.url': _sanitizeUrl(err.requestOptions.uri),
+          'http.request.method': err.requestOptions.method,
+          'url.full': _sanitizeUrl(err.requestOptions.uri),
           if (err.response?.statusCode != null)
-            'http.status_code': err.response!.statusCode,
+            'http.response.status_code': err.response!.statusCode,
           if (durationMs != null) 'duration_ms': durationMs,
           'error.type': err.type.toString(),
         },
@@ -223,7 +223,8 @@ class DioOTelInterceptor extends Interceptor {
       final span = _takeSpan(err.requestOptions);
       if (span == null) return;
       if (err.response?.statusCode != null) {
-        span.setAttribute('http.status_code', err.response!.statusCode);
+        span.setAttribute(
+            'http.response.status_code', err.response!.statusCode);
       }
       span.recordException(err.error ?? err, stackTrace: err.stackTrace);
       span.setStatus(StatusCode.error, description: err.message);
@@ -240,7 +241,7 @@ class DioOTelInterceptor extends Interceptor {
         'HTTP ${options.method}',
         kind: SpanKind.client,
         attributes: {
-          'http.method': options.method,
+          'http.request.method': options.method,
           if (route != null) 'http.route': route,
         },
       );
@@ -261,7 +262,9 @@ class DioOTelInterceptor extends Interceptor {
     final span = _takeSpan(options);
     _safeTrace(() {
       if (span == null) return;
-      if (status != null) span.setAttribute('http.status_code', status);
+      if (status != null) {
+        span.setAttribute('http.response.status_code', status);
+      }
       if (errorType != null) span.setAttribute('error.type', errorType);
       span.setStatus(failed ? StatusCode.error : StatusCode.ok);
       span.end();
@@ -277,9 +280,9 @@ class DioOTelInterceptor extends Interceptor {
           ].join(' '),
           severity: failed ? LogSeverity.error : LogSeverity.info,
           attributes: {
-            'http.method': options.method,
+            'http.request.method': options.method,
             if (route != null) 'http.route': route,
-            if (status != null) 'http.status_code': status,
+            if (status != null) 'http.response.status_code': status,
             'http.duration_ms': durationMs,
             if (errorType != null) 'error.type': errorType,
           },

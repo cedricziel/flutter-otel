@@ -31,9 +31,9 @@ void main() {
     final span = tracer.spans.single;
     expect(span.name, 'GET /notes');
     expect(span.kind, SpanKind.client);
-    expect(span.attributes['http.method'], 'GET');
-    expect(span.attributes['http.target'], '/notes');
-    expect(span.attributes['http.status_code'], 200);
+    expect(span.attributes['http.request.method'], 'GET');
+    expect(span.attributes['url.path'], '/notes');
+    expect(span.attributes['http.response.status_code'], 200);
     expect(span.ended, isTrue);
   });
 
@@ -47,7 +47,7 @@ void main() {
 
     final span = tracer.spans.single;
     expect(span.name, 'GET /notes/:id');
-    expect(span.attributes['http.target'], '/notes/01ABC');
+    expect(span.attributes['url.path'], '/notes/01ABC');
   });
 
   test('injects a traceparent header from the span context', () async {
