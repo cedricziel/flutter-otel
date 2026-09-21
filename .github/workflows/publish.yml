@@ -1,0 +1,37 @@
+name: publish
+
+# Publishes a package to pub.dev when release-please tags it
+# (`<package>-v<version>`). Authenticates with GitHub OIDC, so no secret is
+# stored: each package needs automated publishing enabled on pub.dev
+# (Admin tab > Automated publishing > GitHub Actions) with the tag pattern
+# `<package>-v{{version}}`.
+#
+# The tag is created by release-please with `RELEASE_PLEASE_TOKEN`; tags
+# pushed with the default GITHUB_TOKEN would not trigger this workflow.
+
+on:
+  push:
+    tags:
+      - '*-v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      working-directory: ${{ steps.dir.outputs.dir }}
+    steps:
+      - id: dir
+        run: echo "dir=packages/${GITHUB_REF_NAME%-v*}" >> "$GITHUB_OUTPUT"
+
+  # The reusable workflow installs the Flutter SDK, whose `dart` publishes
+  # both pure Dart and Flutter packages.
+  publish:
+    needs: plan
+    permissions:
+      id-token: write
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@f7deb03562d3d8b508fcbcd7a2512b92c5c52a96 # main
+    with:
+      working-directory: ${{ needs.plan.outputs.working-directory }}
