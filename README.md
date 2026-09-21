@@ -54,6 +54,9 @@ flutter-otel/
     flutter_otel_instrumentation_dio/   # Dio HTTP client instrumentation,
                                          # including CLIENT spans + traceparent
                                          # propagation when a Tracer is given
+    flutter_otel_instrumentation_http/  # package:http client instrumentation:
+                                         # CLIENT spans, traceparent, and
+                                         # semconv header capture (redacted)
     flutter_otel_instrumentation_messaging/  # messaging-style tracing of
                                          # long-lived connections (WebSocket,
                                          # JSON-RPC): a connection span plus
@@ -84,6 +87,7 @@ example specific to it:
 - [`packages/flutter_otel_exporter_otlp_http`](packages/flutter_otel_exporter_otlp_http/README.md)
 - [`packages/flutter_otel`](packages/flutter_otel/README.md)
 - [`packages/flutter_otel_instrumentation_dio`](packages/flutter_otel_instrumentation_dio/README.md)
+- [`packages/flutter_otel_instrumentation_http`](packages/flutter_otel_instrumentation_http/README.md)
 - [`packages/flutter_otel_instrumentation_messaging`](packages/flutter_otel_instrumentation_messaging/README.md)
 - [`packages/flutter_otel_native`](packages/flutter_otel_native/README.md)
 - [`packages/flutter_otel_device_info`](packages/flutter_otel_device_info/README.md)
