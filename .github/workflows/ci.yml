@@ -34,46 +34,54 @@ jobs:
       - name: Format check (whole workspace)
         run: dart format --output=none --set-exit-if-changed .
 
-      # --- flutter_otel_api: pure Dart, no Flutter dependency ---
-      - name: Analyze flutter_otel_api
-        working-directory: packages/flutter_otel_api
+      # --- dart_otel_api: pure Dart, no Flutter dependency ---
+      - name: Analyze dart_otel_api
+        working-directory: packages/dart_otel_api
         run: dart analyze
-      - name: Test flutter_otel_api
-        working-directory: packages/flutter_otel_api
+      - name: Test dart_otel_api
+        working-directory: packages/dart_otel_api
         run: dart test
 
-      # --- flutter_otel_exporter_otlp_http: pure Dart, no Flutter dependency ---
-      - name: Analyze flutter_otel_exporter_otlp_http
-        working-directory: packages/flutter_otel_exporter_otlp_http
+      # --- dart_otel_exporter_otlp_http: pure Dart, no Flutter dependency ---
+      - name: Analyze dart_otel_exporter_otlp_http
+        working-directory: packages/dart_otel_exporter_otlp_http
         run: dart analyze
-      - name: Test flutter_otel_exporter_otlp_http
-        working-directory: packages/flutter_otel_exporter_otlp_http
+      - name: Test dart_otel_exporter_otlp_http
+        working-directory: packages/dart_otel_exporter_otlp_http
         run: dart test
 
-      # --- flutter_otel_instrumentation_dio: pure Dart (Dio has no Flutter
+      # --- dart_otel_instrumentation_dio: pure Dart (Dio has no Flutter
       # dependency either), so this also uses dart analyze/dart test.
-      - name: Analyze flutter_otel_instrumentation_dio
-        working-directory: packages/flutter_otel_instrumentation_dio
+      - name: Analyze dart_otel_instrumentation_dio
+        working-directory: packages/dart_otel_instrumentation_dio
         run: dart analyze
-      - name: Test flutter_otel_instrumentation_dio
-        working-directory: packages/flutter_otel_instrumentation_dio
+      - name: Test dart_otel_instrumentation_dio
+        working-directory: packages/dart_otel_instrumentation_dio
         run: dart test
 
-      # --- flutter_otel_instrumentation_messaging: pure Dart, only depends
-      # on flutter_otel_api.
-      - name: Analyze flutter_otel_instrumentation_messaging
-        working-directory: packages/flutter_otel_instrumentation_messaging
+      # --- dart_otel_instrumentation_http: pure Dart, like the Dio one.
+      - name: Analyze dart_otel_instrumentation_http
+        working-directory: packages/dart_otel_instrumentation_http
         run: dart analyze
-      - name: Test flutter_otel_instrumentation_messaging
-        working-directory: packages/flutter_otel_instrumentation_messaging
+      - name: Test dart_otel_instrumentation_http
+        working-directory: packages/dart_otel_instrumentation_http
         run: dart test
 
-      # --- flutter_otel_sdk: pure Dart, no Flutter dependency ---
-      - name: Analyze flutter_otel_sdk
-        working-directory: packages/flutter_otel_sdk
+      # --- dart_otel_instrumentation_messaging: pure Dart, only depends
+      # on dart_otel_api.
+      - name: Analyze dart_otel_instrumentation_messaging
+        working-directory: packages/dart_otel_instrumentation_messaging
         run: dart analyze
-      - name: Test flutter_otel_sdk
-        working-directory: packages/flutter_otel_sdk
+      - name: Test dart_otel_instrumentation_messaging
+        working-directory: packages/dart_otel_instrumentation_messaging
+        run: dart test
+
+      # --- dart_otel_sdk: pure Dart, no Flutter dependency ---
+      - name: Analyze dart_otel_sdk
+        working-directory: packages/dart_otel_sdk
+        run: dart analyze
+      - name: Test dart_otel_sdk
+        working-directory: packages/dart_otel_sdk
         run: dart test
 
       # --- flutter_otel_native: depends on Flutter (MethodChannel). Only
