@@ -7,7 +7,7 @@ many messages in both directions.
 A `MessagingConnectionTracer` records:
 
 - the connection upgrade as a `SpanKind.client` span named `HTTP GET`
-  (`http.method`, `http.route`, `http.status_code` 101 on success, `error.type`
+  (`http.request.method`, `http.route`, `http.response.status_code` 101 on success, `error.type`
   on failure, which is rethrown),
 - each request as a `SpanKind.producer` span named `<name> send`, open until
   you call `finishRequest` (`messaging.system`, `messaging.operation.type`

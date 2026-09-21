@@ -4,7 +4,7 @@
 dart_otel. `TracingHttpClient` wraps any `http.Client` and, per request:
 
 - starts a `SpanKind.client` span named `<METHOD> <route>` with
-  `http.method` / `http.target`, and `http.status_code` on completion (error
+  `http.request.method` / `url.path`, and `http.response.status_code` on completion (error
   status for 5xx or a thrown exception),
 - injects a W3C `traceparent` header so the server joins the trace,
 - captures request and response headers as `http.request.header.<key>` /

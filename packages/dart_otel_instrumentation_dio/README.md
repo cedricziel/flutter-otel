@@ -27,19 +27,19 @@ depends on it — apps that use Dio add it directly alongside `flutter_otel`.
 ## What's in here
 
 - `DioOTelInterceptor` — a Dio `Interceptor` that:
-  - emits a `debug` record on `onRequest` (`http.method`, `http.url`) and
+  - emits a `debug` record on `onRequest` (`http.request.method`, `url.full`) and
     stamps a start time for later duration calculation,
-  - emits an `info` record on `onResponse` (adds `http.status_code` and
+  - emits an `info` record on `onResponse` (adds `http.response.status_code` and
     `duration_ms`),
   - emits an `error` record on `onError` (adds `error.type`, and
-    `http.status_code` when the failed response carries one, plus the
+    `http.response.status_code` when the failed response carries one, plus the
     usual `exception.type`/`exception.message` from the base `Logger.error`
     behavior),
   - when constructed with `tracer:`, additionally starts a `SpanKind.client`
-    span per request on `onRequest` (with `http.method`/`http.url`
+    span per request on `onRequest` (with `http.request.method`/`url.full`
     attributes) and injects it as a `traceparent` header on the outgoing
     request, joining it into whatever trace/span is active when the request
-    is made; `onResponse` sets `http.status_code` and an `ok` status and
+    is made; `onResponse` sets `http.response.status_code` and an `ok` status and
     ends the span, and `onError` records the exception, sets an `error`
     status, and ends the span.
 
@@ -65,15 +65,15 @@ dio.interceptors.add(
 );
 ```
 
-- One CLIENT span per request, named `HTTP <METHOD>`, with `http.method`,
-  `http.route` (when known), `http.status_code` and `error.type`. Its status
+- One CLIENT span per request, named `HTTP <METHOD>`, with `http.request.method`,
+  `http.route` (when known), `http.response.status_code` and `error.type`. Its status
   is `error` for a status of 400 or above or for a `DioException`, `ok`
   otherwise.
 - One log record per finished request, with body
   `HTTP <METHOD> <route> <status or error type>` (the route is left out when
   unknown), severity `error` for a status of 400 or above or for a
   `DioException` and `info` otherwise (the same rule as the span status), and
-  the attributes `http.method`, `http.route`, `http.status_code`,
+  the attributes `http.request.method`, `http.route`, `http.response.status_code`,
   `http.duration_ms` and `error.type`, plus the span's trace and span ids.
 - `http.route` is the first two segments of the request path when it is
   relative (starts with `/`), without query or fragment, so

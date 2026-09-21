@@ -11,7 +11,7 @@ import 'package:http/http.dart' as http;
 ///
 /// [routeTemplate] maps a request path to the route used in the span name
 /// (`GET /notes/:id`), keeping identifiers out of span-name cardinality. The
-/// raw path is still recorded as `http.target`.
+/// raw path is still recorded as `url.path`.
 ///
 /// With [captureHeaders] (the default) request and response headers are
 /// recorded as `http.request.header.<key>` / `http.response.header.<key>`
@@ -40,8 +40,8 @@ class TracingHttpClient extends http.BaseClient {
       '${request.method} ${_routeTemplate(request.url.path)}',
       kind: SpanKind.client,
       attributes: {
-        'http.method': request.method,
-        'http.target': request.url.path,
+        'http.request.method': request.method,
+        'url.path': request.url.path,
       },
     );
     request.headers['traceparent'] = formatTraceparent(span.spanContext);
@@ -50,7 +50,7 @@ class TracingHttpClient extends http.BaseClient {
     }
     try {
       final response = await _inner.send(request);
-      span.setAttribute('http.status_code', response.statusCode);
+      span.setAttribute('http.response.status_code', response.statusCode);
       if (captureHeaders) {
         span.setAttributes(httpResponseHeaderAttributes(response.headers));
       }

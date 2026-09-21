@@ -64,9 +64,9 @@ void main() {
     expect(span.name, 'HTTP GET');
     expect(span.kind, SpanKind.client);
     expect(span.attributes, {
-      'http.method': 'GET',
+      'http.request.method': 'GET',
       'http.route': '/api/status',
-      'http.status_code': 200,
+      'http.response.status_code': 200,
     });
     expect(span.status, StatusCode.ok);
     expect(span.ended, isTrue);
@@ -78,7 +78,7 @@ void main() {
     await expectLater(dio.get<dynamic>('/api/x'), throwsA(isA<DioException>()));
 
     final span = tracer.spans.single;
-    expect(span.attributes['http.status_code'], 500);
+    expect(span.attributes['http.response.status_code'], 500);
     expect(span.attributes['error.type'], 'badResponse');
     expect(span.status, StatusCode.error);
     expect(span.ended, isTrue);
@@ -170,9 +170,9 @@ void main() {
         final record = logger.records.single;
         expect(record.severity, LogSeverity.info);
         expect(record.body, 'HTTP GET /api/status 200');
-        expect(record.attributes['http.method'], 'GET');
+        expect(record.attributes['http.request.method'], 'GET');
         expect(record.attributes['http.route'], '/api/status');
-        expect(record.attributes['http.status_code'], 200);
+        expect(record.attributes['http.response.status_code'], 200);
         expect(record.attributes['http.duration_ms'], isA<int>());
         expect(record.attributes.containsKey('error.type'), isFalse);
       },
@@ -199,7 +199,7 @@ void main() {
       final record = logger.records.single;
       expect(record.severity, LogSeverity.error);
       expect(record.body, 'HTTP GET /api/x 500');
-      expect(record.attributes['http.status_code'], 500);
+      expect(record.attributes['http.response.status_code'], 500);
       expect(record.attributes['error.type'], 'badResponse');
     });
 
@@ -220,7 +220,8 @@ void main() {
       expect(record.severity, LogSeverity.error);
       expect(record.body, 'HTTP GET /api/x connectionError');
       expect(record.attributes['error.type'], 'connectionError');
-      expect(record.attributes.containsKey('http.status_code'), isFalse);
+      expect(
+          record.attributes.containsKey('http.response.status_code'), isFalse);
     });
 
     test('never logs the host, query string or request data', () async {
@@ -434,7 +435,8 @@ void main() {
 
         expect(tracer.spans.single.status, StatusCode.ok);
         expect(logger.records.single.severity, LogSeverity.info);
-        expect(logger.records.single.attributes['http.status_code'], status);
+        expect(logger.records.single.attributes['http.response.status_code'],
+            status);
       });
     }
 
