@@ -1,0 +1,20 @@
+name: dart_otel_instrumentation_http
+description: >
+  package:http client instrumentation for dart_otel: a BaseClient wrapper
+  that starts a CLIENT span per request, propagates it via W3C traceparent,
+  and captures request/response headers as semantic-convention attributes.
+version: 0.1.0
+homepage: https://github.com/cedricziel/flutter-otel
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  dart_otel_api: ^0.1.0
+  http: ^1.2.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+
+resolution: workspace
