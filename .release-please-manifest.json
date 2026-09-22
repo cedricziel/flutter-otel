@@ -5,7 +5,7 @@
   "packages/dart_otel_instrumentation_dio": "0.1.1",
   "packages/dart_otel_instrumentation_http": "0.1.1",
   "packages/dart_otel_instrumentation_messaging": "0.1.1",
-  "packages/flutter_otel": "0.1.0",
+  "packages/flutter_otel": "0.1.1",
   "packages/flutter_otel_native": "0.1.0",
   "packages/flutter_otel_device_info": "0.1.0"
 }
