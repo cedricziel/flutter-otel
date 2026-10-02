@@ -97,6 +97,22 @@ OTelSdkConfig(
 )
 ```
 
+## Redaction
+
+Set `redactor` to remove secrets from every log record and span before it
+reaches an exporter or the console. `PatternRedactor` covers credentials in
+URLs, `Authorization` values, `password=`/`token:` style pairs and
+bearer/basic tokens. Add formats specific to your app with `extraRules`:
+
+```dart
+OTelSdkConfig(
+  resource: OTelResource(serviceName: 'my-app'),
+  redactor: PatternRedactor(
+    extraRules: [RedactionRule(RegExp(r'\bsk_live_\w+'))],
+  ),
+)
+```
+
 ## App events and uncaught errors
 
 `appEventLogger` records that something happened, as an info log record with a
