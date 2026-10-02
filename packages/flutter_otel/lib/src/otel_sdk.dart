@@ -48,13 +48,25 @@ class OTelSdk {
     void onOwnedClient(http.Client client) => ownedHttpClients.add(client);
 
     final logExporter = _resolveExporter(config, onOwnedClient: onOwnedClient);
-    final logProcessor = BatchLogRecordProcessor(
+    final batchProcessor = BatchLogRecordProcessor(
       logExporter,
       config.resource,
       maxQueueSize: config.maxQueueSize,
       maxExportBatchSize: config.maxExportBatchSize,
       scheduledDelay: config.scheduledDelay,
     );
+    final LogRecordProcessor logProcessor = config.consoleLogging
+        ? MultiLogRecordProcessor([
+            batchProcessor,
+            SimpleLogRecordProcessor(
+              ConsoleLogRecordExporter(
+                printer: debugPrint,
+                minSeverity: config.consoleLogSeverity,
+              ),
+              config.resource,
+            ),
+          ])
+        : batchProcessor;
 
     final spanExporter = _resolveSpanExporter(
       config,

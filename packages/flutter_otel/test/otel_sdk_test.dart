@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_otel/flutter_otel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -390,6 +391,81 @@ void main() {
 
       expect(spanExporter.allSpans, hasLength(1));
       expect(spanExporter.shutdownCallCount, 1);
+    });
+  });
+
+  group('OTelSdk console logging', () {
+    late DebugPrintCallback originalDebugPrint;
+    late List<String> printed;
+
+    setUp(() {
+      originalDebugPrint = debugPrint;
+      printed = [];
+      debugPrint = (message, {wrapWidth}) => printed.add(message ?? '');
+    });
+
+    tearDown(() {
+      debugPrint = originalDebugPrint;
+    });
+
+    OTelSdkConfig config({
+      bool enabled = true,
+      bool consoleLogging = false,
+      LogSeverity consoleLogSeverity = LogSeverity.debug,
+      LogRecordExporter? logExporter,
+    }) =>
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          enabled: enabled,
+          consoleLogging: consoleLogging,
+          consoleLogSeverity: consoleLogSeverity,
+          logExporter: logExporter,
+          sessionTrackingEnabled: false,
+        );
+
+    test('prints records even when the SDK is disabled', () async {
+      final sdk = await OTelSdk.initialize(
+        config(enabled: false, consoleLogging: true),
+      );
+
+      sdk.getLogger(name: 'app').warn('careful');
+      await sdk.forceFlush();
+
+      expect(printed, ['[WARN] app: careful']);
+    });
+
+    test('still exports to the configured exporter', () async {
+      final exporter = FakeLogRecordExporter();
+      final sdk = await OTelSdk.initialize(
+        config(consoleLogging: true, logExporter: exporter),
+      );
+
+      sdk.getLogger(name: 'app').info('hello');
+      await sdk.forceFlush();
+
+      expect(printed, ['[INFO] app: hello']);
+      expect(exporter.allRecords.single.body, 'hello');
+    });
+
+    test('honours consoleLogSeverity', () async {
+      final sdk = await OTelSdk.initialize(
+        config(consoleLogging: true, consoleLogSeverity: LogSeverity.error),
+      );
+
+      sdk.getLogger(name: 'app').warn('quiet');
+      sdk.getLogger(name: 'app').error('loud');
+      await sdk.forceFlush();
+
+      expect(printed, ['[ERROR] app: loud']);
+    });
+
+    test('prints nothing when consoleLogging is off', () async {
+      final sdk = await OTelSdk.initialize(config());
+
+      sdk.getLogger(name: 'app').error('silent');
+      await sdk.forceFlush();
+
+      expect(printed, isEmpty);
     });
   });
 }
