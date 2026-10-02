@@ -85,4 +85,17 @@ void main() {
       expect(config.consoleLogSeverity, LogSeverity.warn);
     });
   });
+
+  group('OTelSdkConfig redaction', () {
+    test('has no redactor by default', () {
+      expect(OTelSdkConfig(resource: resource()).redactor, isNull);
+    });
+
+    test('keeps the redactor it is given', () {
+      final redactor = PatternRedactor();
+      final config = OTelSdkConfig(resource: resource(), redactor: redactor);
+
+      expect(config.redactor, same(redactor));
+    });
+  });
 }
