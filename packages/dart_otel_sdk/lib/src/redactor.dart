@@ -62,7 +62,7 @@ class PatternRedactor implements Redactor {
   static final List<RedactionRule> defaultRules = [
     RedactionRule(
       RegExp(
-        r'\b([a-z][a-z0-9+.\-]*://)[^/\s:@]+:[^/\s@]+@',
+        r'\b([a-z][a-z0-9+.\-]*://)[^/?#\s:@]+:[^/?#\s@]+@',
         caseSensitive: false,
       ),
       replacement: r'$1[REDACTED]@',

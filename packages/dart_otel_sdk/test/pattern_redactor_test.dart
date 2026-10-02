@@ -43,6 +43,14 @@ void main() {
       );
     });
 
+    test('does not treat an @ in the query or fragment as credentials', () {
+      const query = 'https://nas.local:8080?next=user@example.com';
+      const fragment = 'https://nas.local:8080/ui#user:x@example.com';
+
+      expect(redactor.redact(query), query);
+      expect(redactor.redact(fragment), fragment);
+    });
+
     test('redacts every occurrence, not just the first', () {
       expect(
         redactor.redact('password=a then password=b'),
