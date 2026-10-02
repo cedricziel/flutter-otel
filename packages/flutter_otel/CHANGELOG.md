@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.3...flutter_otel-v0.1.4) (2026-10-02)
+
+
+### Features
+
+* add opt-in telemetry redaction ([#29](https://github.com/cedricziel/flutter-otel/issues/29)) ([3a74f36](https://github.com/cedricziel/flutter-otel/commit/3a74f366cb51f76758e120904f4b87b1c4b1a194))
+
 ## [0.1.3](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.2...flutter_otel-v0.1.3) (2026-10-02)
 
 
