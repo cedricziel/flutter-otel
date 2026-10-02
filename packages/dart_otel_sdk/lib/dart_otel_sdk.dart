@@ -8,6 +8,7 @@ export 'package:dart_otel_api/dart_otel_api.dart';
 
 export 'src/batch_log_record_processor.dart';
 export 'src/batch_span_processor.dart';
+export 'src/console_log_record_exporter.dart';
 export 'src/otel_sdk_config.dart';
 export 'src/sdk_logger_provider.dart';
 export 'src/sdk_span.dart';
