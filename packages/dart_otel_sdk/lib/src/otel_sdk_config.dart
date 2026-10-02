@@ -18,6 +18,8 @@ class OTelSdkConfig {
     this.httpClient,
     this.logExporter,
     this.spanExporter,
+    this.consoleLogging = false,
+    this.consoleLogSeverity = LogSeverity.debug,
   }) {
     if (maxQueueSize <= 0) {
       throw ArgumentError.value(
@@ -108,4 +110,11 @@ class OTelSdkConfig {
   /// Overrides the span exporter entirely (e.g. for tests or a custom
   /// sink), bypassing [otlpEndpoint]/[otlpTracesEndpoint] resolution.
   final SpanExporter? spanExporter;
+
+  /// Whether to also print every log record to the console, independent of
+  /// [enabled] and of any OTLP export. Typically `kDebugMode`.
+  final bool consoleLogging;
+
+  /// The lowest severity printed when [consoleLogging] is on.
+  final LogSeverity consoleLogSeverity;
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrintDone;
 import 'package:flutter/widgets.dart';
 import 'package:dart_otel_exporter_otlp_http/dart_otel_exporter_otlp_http.dart';
 import 'package:dart_otel_sdk/dart_otel_sdk.dart';
@@ -48,13 +49,25 @@ class OTelSdk {
     void onOwnedClient(http.Client client) => ownedHttpClients.add(client);
 
     final logExporter = _resolveExporter(config, onOwnedClient: onOwnedClient);
-    final logProcessor = BatchLogRecordProcessor(
+    final batchProcessor = BatchLogRecordProcessor(
       logExporter,
       config.resource,
       maxQueueSize: config.maxQueueSize,
       maxExportBatchSize: config.maxExportBatchSize,
       scheduledDelay: config.scheduledDelay,
     );
+    final LogRecordProcessor logProcessor = config.consoleLogging
+        ? MultiLogRecordProcessor([
+            batchProcessor,
+            SimpleLogRecordProcessor(
+              ConsoleLogRecordExporter(
+                printer: debugPrint,
+                minSeverity: config.consoleLogSeverity,
+              ),
+              config.resource,
+            ),
+          ])
+        : batchProcessor;
 
     final spanExporter = _resolveSpanExporter(
       config,
@@ -212,6 +225,9 @@ class OTelSdk {
       loggerProvider.forceFlush(),
       tracerProvider.forceFlush(),
     ]);
+    // Console logging prints through debugPrint, which queues and throttles
+    // long output; a flush is only done once that queue has drained.
+    await debugPrintDone;
   }
 
   /// Flushes and releases every resource owned by this SDK instance: the
