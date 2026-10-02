@@ -4,7 +4,7 @@ description: >
   Depends on dart_otel_api. Pure Dart, no Flutter dependency — the
   Flutter-specific facade and session tracking live in flutter_otel, which
   builds on this package.
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/cedricziel/flutter-otel
 
 environment:
