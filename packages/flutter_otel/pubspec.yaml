@@ -15,7 +15,7 @@ dependencies:
     sdk: flutter
   dart_otel_api: ^0.1.0
   dart_otel_exporter_otlp_http: ^0.1.0
-  dart_otel_sdk: ^0.1.1
+  dart_otel_sdk: ^0.1.2
   http: ^1.2.0
   uuid: ^4.4.0
 
