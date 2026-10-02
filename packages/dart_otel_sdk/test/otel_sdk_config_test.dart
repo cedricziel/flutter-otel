@@ -65,4 +65,24 @@ void main() {
       );
     });
   });
+
+  group('OTelSdkConfig console logging', () {
+    test('is off by default and prints from debug up', () {
+      final config = OTelSdkConfig(resource: resource());
+
+      expect(config.consoleLogging, isFalse);
+      expect(config.consoleLogSeverity, LogSeverity.debug);
+    });
+
+    test('accepts explicit values', () {
+      final config = OTelSdkConfig(
+        resource: resource(),
+        consoleLogging: true,
+        consoleLogSeverity: LogSeverity.warn,
+      );
+
+      expect(config.consoleLogging, isTrue);
+      expect(config.consoleLogSeverity, LogSeverity.warn);
+    });
+  });
 }
