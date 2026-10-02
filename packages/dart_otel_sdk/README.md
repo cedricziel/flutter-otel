@@ -35,6 +35,14 @@ Depends on `dart_otel_api`, `dart_otel_exporter_otlp_http`, `flutter`
   (`[WARN] scope: message {attributes}`), plus any `exception.stacktrace`.
   `MultiLogRecordProcessor` fans one logger provider out to several
   processors, e.g. an OTLP batch pipeline and a console sink.
+- `RedactingLogRecordProcessor` / `RedactingSpanProcessor` — remove secrets
+  before anything is exported. Each wraps the next processor and forwards a
+  redacted copy: log bodies, string attributes, span event and link
+  attributes, and span status descriptions. `PatternRedactor` ships rules
+  for credentials in URLs, `Authorization` values, `password=`/`token:`
+  style pairs and bearer/basic tokens, and drops the whole value of
+  attributes with sensitive keys such as `cookie`. Add app-specific formats
+  with `extraRules`. Set `OTelSdkConfig.redactor` to wrap both pipelines.
 - `SdkLoggerProvider` — the concrete `LoggerProvider`. Every `Logger` it
   vends automatically stamps `traceId`/`spanId` from `Span.current` onto
   each emitted record when a span is active (unless the caller already set
