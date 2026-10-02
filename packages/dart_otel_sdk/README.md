@@ -31,6 +31,10 @@ Depends on `dart_otel_api`, `dart_otel_exporter_otlp_http`, `flutter`
   both signals), flushing on a periodic timer or once a batch fills up;
   swallow export failures via `debugPrint` instead of throwing into app
   code. Both guard against exporting during/after `shutdown()`.
+- `ConsoleLogRecordExporter` — prints one line per record
+  (`[WARN] scope: message {attributes}`), plus any `exception.stacktrace`.
+  `MultiLogRecordProcessor` fans one logger provider out to several
+  processors, e.g. an OTLP batch pipeline and a console sink.
 - `SdkLoggerProvider` — the concrete `LoggerProvider`. Every `Logger` it
   vends automatically stamps `traceId`/`spanId` from `Span.current` onto
   each emitted record when a span is active (unless the caller already set

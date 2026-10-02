@@ -84,6 +84,19 @@ See the [root README](../../README.md) for the full quick-start, the
 traces/correlation walkthrough, and the `OTEL_EXPORTER_OTLP_*`
 configuration naming convention this SDK mirrors.
 
+## Console logging
+
+Set `consoleLogging` to also print every log record through `debugPrint`,
+with or without an OTLP endpoint. Records below `consoleLogSeverity`
+(default `LogSeverity.debug`) are skipped.
+
+```dart
+OTelSdkConfig(
+  resource: OTelResource(serviceName: 'my-app'),
+  consoleLogging: kDebugMode,
+)
+```
+
 ## App events and uncaught errors
 
 `appEventLogger` records that something happened, as an info log record with a
