@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.4...flutter_otel-v0.1.5) (2026-10-02)
+
+
+### Bug Fixes
+
+* **flutter_otel:** require dart_otel_sdk 0.1.2 ([#31](https://github.com/cedricziel/flutter-otel/issues/31)) ([2e31a76](https://github.com/cedricziel/flutter-otel/commit/2e31a76323a90975f136a0c968f8c4773c794bd8))
+
 ## [0.1.4](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.3...flutter_otel-v0.1.4) (2026-10-02)
 
 
