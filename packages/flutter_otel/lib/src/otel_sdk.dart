@@ -56,7 +56,7 @@ class OTelSdk {
       maxExportBatchSize: config.maxExportBatchSize,
       scheduledDelay: config.scheduledDelay,
     );
-    final LogRecordProcessor logProcessor = config.consoleLogging
+    final LogRecordProcessor exportingLogProcessor = config.consoleLogging
         ? MultiLogRecordProcessor([
             batchProcessor,
             SimpleLogRecordProcessor(
@@ -73,13 +73,23 @@ class OTelSdk {
       config,
       onOwnedClient: onOwnedClient,
     );
-    final spanProcessor = BatchSpanProcessor(
+    final exportingSpanProcessor = BatchSpanProcessor(
       spanExporter,
       config.resource,
       maxQueueSize: config.maxQueueSize,
       maxExportBatchSize: config.maxExportBatchSize,
       scheduledDelay: config.scheduledDelay,
     );
+
+    // Redaction wraps the whole chain, console sink included, so nothing
+    // reaches any output unredacted.
+    final redactor = config.redactor;
+    final LogRecordProcessor logProcessor = redactor == null
+        ? exportingLogProcessor
+        : RedactingLogRecordProcessor(exportingLogProcessor, redactor);
+    final SpanProcessor spanProcessor = redactor == null
+        ? exportingSpanProcessor
+        : RedactingSpanProcessor(exportingSpanProcessor, redactor);
 
     SessionManager? sessionManager;
     if (config.sessionTrackingEnabled) {

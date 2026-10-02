@@ -1,6 +1,8 @@
 import 'package:dart_otel_api/dart_otel_api.dart';
 import 'package:http/http.dart' as http;
 
+import 'redactor.dart';
+
 /// Configuration for [OTelSdk.initialize].
 class OTelSdkConfig {
   OTelSdkConfig({
@@ -20,6 +22,7 @@ class OTelSdkConfig {
     this.spanExporter,
     this.consoleLogging = false,
     this.consoleLogSeverity = LogSeverity.debug,
+    this.redactor,
   }) {
     if (maxQueueSize <= 0) {
       throw ArgumentError.value(
@@ -117,4 +120,9 @@ class OTelSdkConfig {
 
   /// The lowest severity printed when [consoleLogging] is on.
   final LogSeverity consoleLogSeverity;
+
+  /// When set, every log record and finished span passes through
+  /// [RedactingLogRecordProcessor]/[RedactingSpanProcessor] before any
+  /// exporter or console sink sees it. `null` exports data unchanged.
+  final Redactor? redactor;
 }
