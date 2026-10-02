@@ -48,21 +48,27 @@ void main() {
       expect(b.emitted, hasLength(1));
     });
 
-    test('forceFlush reaches every processor even if one throws', () async {
+    test('forceFlush reaches every processor and reports a failure', () async {
       final a = _RecordingProcessor(throwOnFlush: true);
       final b = _RecordingProcessor();
 
-      await MultiLogRecordProcessor([a, b]).forceFlush();
+      await expectLater(
+        MultiLogRecordProcessor([a, b]).forceFlush(),
+        throwsA(isA<StateError>()),
+      );
 
       expect(a.flushCount, 1);
       expect(b.flushCount, 1);
     });
 
-    test('shutdown reaches every processor even if one throws', () async {
+    test('shutdown reaches every processor and reports a failure', () async {
       final a = _RecordingProcessor(throwOnShutdown: true);
       final b = _RecordingProcessor();
 
-      await MultiLogRecordProcessor([a, b]).shutdown();
+      await expectLater(
+        MultiLogRecordProcessor([a, b]).shutdown(),
+        throwsA(isA<StateError>()),
+      );
 
       expect(a.shutdownCount, 1);
       expect(b.shutdownCount, 1);

@@ -5,6 +5,8 @@ import 'package:dart_otel_api/dart_otel_api.dart';
 /// exporter and a local console sink).
 ///
 /// A processor that throws never prevents the others from being reached.
+/// [forceFlush] and [shutdown] still wait for every processor, then rethrow
+/// the first failure.
 class MultiLogRecordProcessor implements LogRecordProcessor {
   MultiLogRecordProcessor(List<LogRecordProcessor> processors)
       : _processors = List.unmodifiable(processors);
@@ -27,11 +29,5 @@ class MultiLogRecordProcessor implements LogRecordProcessor {
   Future<void> shutdown() => _forEach((p) => p.shutdown());
 
   Future<void> _forEach(Future<void> Function(LogRecordProcessor) action) =>
-      Future.wait(
-        _processors.map((p) async {
-          try {
-            await action(p);
-          } catch (_) {}
-        }),
-      );
+      Future.wait(_processors.map((p) async => action(p)));
 }
