@@ -89,6 +89,80 @@ void main() {
     });
   });
 
+  group('OTelSdk redaction', () {
+    test('redacts logs and spans before export when a redactor is set',
+        () async {
+      final logExporter = FakeLogRecordExporter();
+      final spanExporter = FakeSpanExporter();
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          logExporter: logExporter,
+          spanExporter: spanExporter,
+          redactor: PatternRedactor(),
+        ),
+      );
+
+      sdk.getLogger().error(
+        'login failed: password=hunter2',
+        attributes: {'http.request.header.authorization': 'opaque'},
+      );
+      final span = sdk.getTracer().startSpan('truenas.call')
+        ..setAttribute('url.full', 'https://root:pw@nas.local/api')
+        ..setStatus(StatusCode.error, description: 'token=abc rejected');
+      span.end();
+      await sdk.forceFlush();
+
+      final record = logExporter.allRecords.single;
+      expect(record.body, 'login failed: password=[REDACTED]');
+      expect(
+        record.attributes['http.request.header.authorization'],
+        '[REDACTED]',
+      );
+      final exported = spanExporter.allSpans.single;
+      expect(
+          exported.attributes['url.full'], 'https://[REDACTED]@nas.local/api');
+      expect(exported.statusDescription, 'token=[REDACTED] rejected');
+    });
+
+    test('redacts console output too', () async {
+      final printed = <String>[];
+      final originalDebugPrint = debugPrint;
+      debugPrint = (message, {wrapWidth}) => printed.add(message ?? '');
+      addTearDown(() => debugPrint = originalDebugPrint);
+
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          logExporter: FakeLogRecordExporter(),
+          consoleLogging: true,
+          redactor: PatternRedactor(),
+        ),
+      );
+
+      sdk.getLogger().info('Bearer abc123');
+      await sdk.forceFlush();
+
+      expect(printed.join('\n'), contains('Bearer [REDACTED]'));
+      expect(printed.join('\n'), isNot(contains('abc123')));
+    });
+
+    test('exports data unchanged without a redactor', () async {
+      final logExporter = FakeLogRecordExporter();
+      final sdk = await OTelSdk.initialize(
+        OTelSdkConfig(
+          resource: OTelResource(serviceName: 'test'),
+          logExporter: logExporter,
+        ),
+      );
+
+      sdk.getLogger().info('password=hunter2');
+      await sdk.forceFlush();
+
+      expect(logExporter.allRecords.single.body, 'password=hunter2');
+    });
+  });
+
   group('OTelSdk trace-to-log correlation', () {
     test(
       'logger.info(...) called inside tracer.startActiveSpan(...) '
