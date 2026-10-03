@@ -494,4 +494,22 @@ void main() {
       expect(logger.records.single.severity, LogSeverity.info);
     });
   });
+
+  test('adds the given attributes to the span and the log record', () async {
+    final dio = Dio(BaseOptions(baseUrl: 'https://$_host'));
+    dio.httpClientAdapter =
+        _FakeAdapter((_) async => ResponseBody.fromString('{}', 200));
+    dio.interceptors.add(
+      DioOTelInterceptor.privacy(
+        logger,
+        tracer: tracer,
+        attributes: const {'peer.service': 'backend'},
+      ),
+    );
+
+    await dio.get<dynamic>('/api/status');
+
+    expect(tracer.spans.single.attributes['peer.service'], 'backend');
+    expect(logger.records.single.attributes['peer.service'], 'backend');
+  });
 }

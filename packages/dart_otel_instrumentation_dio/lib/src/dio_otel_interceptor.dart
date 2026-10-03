@@ -38,6 +38,7 @@ class DioOTelInterceptor extends Interceptor {
     Tracer? tracer,
     DateTime Function()? clock,
     this.includeQueryParameters = false,
+    this.attributes = const {},
   })  : _privacy = false,
         routeSegments = 2,
         _tracer = tracer,
@@ -67,6 +68,7 @@ class DioOTelInterceptor extends Interceptor {
     Tracer? tracer,
     DateTime Function()? clock,
     this.routeSegments = 2,
+    this.attributes = const {},
   })  : assert(routeSegments >= 1, 'routeSegments must be at least 1'),
         _privacy = true,
         includeQueryParameters = false,
@@ -110,6 +112,11 @@ class DioOTelInterceptor extends Interceptor {
   /// carry sensitive data and the query parameters are useful for debugging.
   final bool includeQueryParameters;
 
+  /// Added to every span and log record, for attributes that hold for all
+  /// requests on the client, such as `peer.service`. The interceptor's own
+  /// per-request attributes take precedence on a clash.
+  final Map<String, Object?> attributes;
+
   @override
   void onRequest(
     RequestOptions options,
@@ -125,6 +132,7 @@ class DioOTelInterceptor extends Interceptor {
       _logger.debug(
         'HTTP request started',
         attributes: {
+          ...attributes,
           'http.request.method': options.method,
           'url.full': _sanitizeUrl(options.uri),
         },
@@ -137,6 +145,7 @@ class DioOTelInterceptor extends Interceptor {
         'HTTP ${options.method}',
         kind: SpanKind.client,
         attributes: {
+          ...attributes,
           'http.request.method': options.method,
           'url.full': _sanitizeUrl(options.uri),
         },
@@ -162,6 +171,7 @@ class DioOTelInterceptor extends Interceptor {
       _logger.info(
         'HTTP request completed',
         attributes: {
+          ...attributes,
           'http.request.method': response.requestOptions.method,
           'url.full': _sanitizeUrl(response.requestOptions.uri),
           if (response.statusCode != null)
@@ -210,6 +220,7 @@ class DioOTelInterceptor extends Interceptor {
         error: err.error ?? err,
         stackTrace: err.stackTrace,
         attributes: {
+          ...attributes,
           'http.request.method': err.requestOptions.method,
           'url.full': _sanitizeUrl(err.requestOptions.uri),
           if (err.response?.statusCode != null)
@@ -241,6 +252,7 @@ class DioOTelInterceptor extends Interceptor {
         'HTTP ${options.method}',
         kind: SpanKind.client,
         attributes: {
+          ...attributes,
           'http.request.method': options.method,
           if (route != null) 'http.route': route,
         },
@@ -280,6 +292,7 @@ class DioOTelInterceptor extends Interceptor {
           ].join(' '),
           severity: failed ? LogSeverity.error : LogSeverity.info,
           attributes: {
+            ...attributes,
             'http.request.method': options.method,
             if (route != null) 'http.route': route,
             if (status != null) 'http.response.status_code': status,
