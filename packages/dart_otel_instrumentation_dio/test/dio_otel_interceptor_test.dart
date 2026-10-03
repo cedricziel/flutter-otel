@@ -437,6 +437,27 @@ void main() {
       expect(handler.isCompleted, isTrue);
     });
 
+    test('adds the given attributes to the span and every log record', () {
+      final tracer = _RecordingTracer();
+      final interceptor = DioOTelInterceptor(
+        logger,
+        tracer: tracer,
+        attributes: const {'peer.service': 'backend'},
+      );
+      final options = buildRequestOptions();
+      interceptor.onRequest(options, RequestInterceptorHandler());
+      interceptor.onResponse(
+        Response<dynamic>(requestOptions: options, statusCode: 200),
+        ResponseInterceptorHandler(),
+      );
+
+      expect(tracer.startedSpans.single.attributes['peer.service'], 'backend');
+      expect(logger.emitted, hasLength(2));
+      for (final record in logger.emitted) {
+        expect(record.attributes['peer.service'], 'backend');
+      }
+    });
+
     test('onResponse ends the span with an ok status and the status code', () {
       final tracer = _RecordingTracer();
       final interceptor = DioOTelInterceptor(logger, tracer: tracer);
