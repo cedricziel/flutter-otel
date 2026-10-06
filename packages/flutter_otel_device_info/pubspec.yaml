@@ -3,7 +3,7 @@ description: >
   Device attributes (OS, hardware model, form factor) for OpenTelemetry
   resources in Flutter apps, drawn from an explicit allowlist, and an opt-in,
   vendor-scoped app installation ID.
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/cedricziel/flutter-otel
 
 environment:
