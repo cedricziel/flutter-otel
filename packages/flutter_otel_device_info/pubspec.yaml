@@ -1,8 +1,8 @@
 name: flutter_otel_device_info
 description: >
-  Coarse, non-identifying device attributes (OS, hardware model, form factor)
-  for OpenTelemetry resources in Flutter apps, drawn from an explicit
-  allowlist that never includes device names, hardware IDs or locale.
+  Device attributes (OS, hardware model, form factor) for OpenTelemetry
+  resources in Flutter apps, drawn from an explicit allowlist, and an opt-in,
+  vendor-scoped app installation ID.
 version: 0.1.0
 homepage: https://github.com/cedricziel/flutter-otel
 
@@ -14,6 +14,9 @@ dependencies:
   flutter:
     sdk: flutter
   device_info_plus: ">=12.4.0 <14.0.0"
+  android_id: ^0.6.0
+  path_provider: ^2.1.0
+  uuid: ^4.4.0
 
 dev_dependencies:
   flutter_test:
