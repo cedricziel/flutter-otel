@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.6...flutter_otel-v0.1.7) (2026-10-08)
+
+
+### Bug Fixes
+
+* **flutter_otel:** keep crash breadcrumbs within the attribute size limit ([#39](https://github.com/cedricziel/flutter-otel/issues/39)) ([a7d0208](https://github.com/cedricziel/flutter-otel/commit/a7d02087b89f8fb6395edbfbb9f16eb890fec839))
+
 ## [0.1.6](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.5...flutter_otel-v0.1.6) (2026-10-08)
 
 
