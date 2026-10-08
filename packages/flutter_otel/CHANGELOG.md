@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.5...flutter_otel-v0.1.6) (2026-10-08)
+
+
+### Features
+
+* **flutter_otel:** collapse repeating crashes and keep stack traces within size limits ([#37](https://github.com/cedricziel/flutter-otel/issues/37)) ([9d5faf3](https://github.com/cedricziel/flutter-otel/commit/9d5faf3985dca40fb2ae74e42abac55dcc4e30ea))
+
 ## [0.1.5](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.4...flutter_otel-v0.1.5) (2026-10-02)
 
 
