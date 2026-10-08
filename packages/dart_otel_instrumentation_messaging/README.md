@@ -80,6 +80,7 @@ newest successful connection.
 | `skippedNames` | Event names that record no span. Default: none.                             |
 | `knownEvents`  | Allowlist of event names recorded as-is, the rest as `other`. Default: any. |
 | `jsonRpc`      | Adds the `rpc.*` attributes to request spans. Default: `false`.             |
+| `attributes`   | Added to every span; a span's own attributes win on a clash. Default: none. |
 
 `route` (the connection's `http.route`) is given per `connecting` call.
 

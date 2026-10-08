@@ -31,6 +31,39 @@ void main() {
   RecordingSpan spanNamed(String name) =>
       tracer.spans.singleWhere((s) => s.name == name);
 
+  group('fixed attributes', () {
+    test('are on the upgrade, request and event spans, under their own',
+        () async {
+      messaging = MessagingConnectionTracer(
+        tracer,
+        system: 'test.gateway',
+        attributes: const {
+          'server.version': '1.2',
+          'messaging.system': 'shadowed',
+          'http.route': 'shadowed',
+        },
+      );
+
+      await connected();
+      messaging.finishRequest(messaging.startRequest('prompt.submit', 1));
+      messaging.event('tool.start');
+
+      expect(tracer.spans, hasLength(3));
+      for (final span in tracer.spans) {
+        expect(span.attributes['server.version'], '1.2', reason: span.name);
+      }
+      expect(spanNamed('HTTP GET').attributes['http.route'], '/ws');
+      expect(
+        spanNamed('prompt.submit send').attributes['messaging.system'],
+        'test.gateway',
+      );
+      expect(
+        spanNamed('tool.start receive').attributes['messaging.system'],
+        'test.gateway',
+      );
+    });
+  });
+
   group('the connection', () {
     test('is an HTTP client span for the upgrade', () async {
       await connected();

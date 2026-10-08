@@ -28,12 +28,17 @@ class MessagingConnectionTracer {
   ///
   /// [jsonRpc] adds `rpc.system`, `rpc.jsonrpc.version` and `rpc.method` to
   /// request spans.
+  ///
+  /// [attributes] are added to every span, for what holds for the whole
+  /// connection, such as the peer's version. A span's own attributes take
+  /// precedence on a clash.
   MessagingConnectionTracer(
     this._tracer, {
     required this.system,
     this.skippedNames = const {},
     this.knownEvents,
     this.jsonRpc = false,
+    this.attributes = const {},
   });
 
   final Tracer? _tracer;
@@ -41,6 +46,7 @@ class MessagingConnectionTracer {
   final Set<String> skippedNames;
   final Set<String>? knownEvents;
   final bool jsonRpc;
+  final Map<String, Object?> attributes;
 
   SpanContext? _connection;
 
@@ -57,7 +63,11 @@ class MessagingConnectionTracer {
       () => tracer.startSpan(
         'HTTP GET',
         kind: SpanKind.client,
-        attributes: {'http.request.method': 'GET', 'http.route': route},
+        attributes: {
+          ...attributes,
+          'http.request.method': 'GET',
+          'http.route': route,
+        },
       ),
     );
     try {
@@ -135,7 +145,7 @@ class MessagingConnectionTracer {
     });
   }
 
-  Span? _start(String name, SpanKind kind, Map<String, Object?> attributes) {
+  Span? _start(String name, SpanKind kind, Map<String, Object?> own) {
     final tracer = _tracer;
     if (tracer == null) return null;
     final connection = _connection;
@@ -143,7 +153,7 @@ class MessagingConnectionTracer {
       () => tracer.startSpan(
         name,
         kind: kind,
-        attributes: attributes,
+        attributes: {...attributes, ...own},
         links: [if (connection != null) SpanLink(connection)],
       ),
     );
