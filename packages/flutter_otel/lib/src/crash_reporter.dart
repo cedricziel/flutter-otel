@@ -49,7 +49,9 @@ const _signatureFrames = 5;
 /// limit (SignalDB drops any value over 4096 bytes by default, which loses
 /// the whole stack trace of a deep widget tree). A stack trace is cut after
 /// its last whole frame that fits, and ends with a line saying how many
-/// frames were left out.
+/// frames were left out. The `breadcrumbs` array is kept within the same
+/// limit, counted as the collector does (all elements together): the oldest
+/// entries are left out first, and a line at the start says how many.
 void installCrashReporting(
   Logger logger, {
   BreadcrumbTrail? breadcrumbs,
@@ -170,7 +172,7 @@ class _CrashLog {
           severity: LogSeverity.error,
           attributes: {
             ...attributes,
-            ...?_breadcrumbAttributes(breadcrumbs),
+            ...?_breadcrumbAttributes(breadcrumbs, maxValueBytes),
           },
         ),
       );
@@ -208,9 +210,63 @@ String _trimStackTrace(String stack, int maxBytes) {
 
 String _omitted(int frames) => '... $frames more frames';
 
-Map<String, Object?>? _breadcrumbAttributes(BreadcrumbTrail? breadcrumbs) {
+Map<String, Object?>? _breadcrumbAttributes(
+  BreadcrumbTrail? breadcrumbs,
+  int maxBytes,
+) {
   if (breadcrumbs == null || breadcrumbs.recent.isEmpty) return null;
   return {
-    'breadcrumbs': [for (final b in breadcrumbs.recent) b.toString()],
+    'breadcrumbs': _trimBreadcrumbs(
+      [for (final b in breadcrumbs.recent) b.toString()],
+      maxBytes,
+    ),
   };
+}
+
+/// Keeps the newest of [crumbs] (oldest first) that fit [maxBytes] as an
+/// attribute array, and starts the result with a line saying how many older
+/// ones were left out.
+///
+/// A collector counts an array as a whole, so the limit covers every element
+/// together with its protobuf framing, not each string alone.
+List<String> _trimBreadcrumbs(List<String> crumbs, int maxBytes) {
+  final costs = [for (final crumb in crumbs) _elementBytes(_byteLength(crumb))];
+  if (costs.fold(0, (sum, cost) => sum + cost) <= maxBytes) return crumbs;
+  // Reserve room for the longest possible omission line.
+  final budget =
+      maxBytes - _elementBytes(_byteLength(_olderDropped(crumbs.length)));
+  final kept = <String>[];
+  var used = 0;
+  for (var i = crumbs.length - 1; i >= 0; i--) {
+    if (used + costs[i] > budget) break;
+    kept.add(crumbs[i]);
+    used += costs[i];
+  }
+  if (kept.isEmpty) {
+    // Even the newest one alone is too long.
+    var textBytes = budget;
+    while (textBytes > 0 && _elementBytes(textBytes) > budget) {
+      textBytes--;
+    }
+    kept.add(_trimText(crumbs.last, textBytes));
+  }
+  return [_olderDropped(crumbs.length - kept.length), ...kept.reversed];
+}
+
+String _olderDropped(int count) => '... $count older breadcrumbs dropped';
+
+/// What one string of [textBytes] adds to an array attribute, as SignalDB
+/// counts it: a length-delimited `AnyValue` holding a length-delimited
+/// string, each with a one byte tag and a varint length.
+int _elementBytes(int textBytes) {
+  final value = 1 + _varintLength(textBytes) + textBytes;
+  return 1 + _varintLength(value) + value;
+}
+
+int _varintLength(int value) {
+  var length = 1;
+  for (var rest = value >> 7; rest > 0; rest >>= 7) {
+    length++;
+  }
+  return length;
 }

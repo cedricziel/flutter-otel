@@ -62,11 +62,13 @@ void main() {
     expect(handled, isFalse, reason: 'no previous handler was installed');
   });
 
-  StackTrace deepStack(int frames) => StackTrace.fromString([
-        for (var i = 0; i < frames; i++)
-          '#$i      _RenderObjectSemantics._buildSemantics '
-              '(package:flutter/src/rendering/object.dart:6227)',
-      ].join('\n'));
+  StackTrace deepStack(int frames) => StackTrace.fromString(
+        [
+          for (var i = 0; i < frames; i++)
+            '#$i      _RenderObjectSemantics._buildSemantics '
+                '(package:flutter/src/rendering/object.dart:6227)',
+        ].join('\n'),
+      );
 
   test('trims a long stack trace to whole frames within the byte limit', () {
     installCrashReporting(logger, maxValueBytes: 1000);
@@ -138,13 +140,109 @@ void main() {
     ]);
   });
 
+  group('breadcrumb size', () {
+    // What SignalDB measures for an array attribute: the protobuf encoding
+    // of the array, so every element costs its bytes plus framing.
+    int varint(int value) => value < 0x80 ? 1 : (value < 0x4000 ? 2 : 3);
+    int encodedLength(List<String> values) => values.fold(0, (sum, value) {
+          final string =
+              1 + varint(utf8.encode(value).length) + utf8.encode(value).length;
+          return sum + 1 + varint(string) + string;
+        });
+
+    List<String> reportCrumbs(BreadcrumbTrail trail, {int? maxValueBytes}) {
+      installCrashReporting(
+        logger,
+        breadcrumbs: trail,
+        maxValueBytes: maxValueBytes ?? 4096,
+      );
+      FlutterError.onError!(FlutterErrorDetails(exception: StateError('x')));
+      return (logger.records.single.attributes['breadcrumbs'] as List)
+          .cast<String>();
+    }
+
+    test(
+      'keeps the newest breadcrumbs that fit and says how many it dropped',
+      () {
+        final trail = BreadcrumbTrail(capacity: 40);
+        for (var i = 0; i < 40; i++) {
+          trail.record('event.$i', {'detail': 'x' * 100});
+        }
+
+        final crumbs = reportCrumbs(trail, maxValueBytes: 1000);
+
+        expect(encodedLength(crumbs), lessThanOrEqualTo(1000));
+        final dropped = 40 - (crumbs.length - 1);
+        expect(dropped, greaterThan(0));
+        expect(crumbs.first, '... $dropped older breadcrumbs dropped');
+        expect(crumbs.skip(1), [
+          for (final b in trail.recent.skip(dropped)) b.toString(),
+        ]);
+      },
+    );
+
+    test('fills the budget before dropping anything', () {
+      final trail = BreadcrumbTrail(capacity: 40);
+      for (var i = 0; i < 40; i++) {
+        trail.record('event.$i', {'detail': 'x' * 100});
+      }
+
+      final crumbs = reportCrumbs(trail, maxValueBytes: 1000);
+
+      final next = trail.recent[40 - (crumbs.length - 1) - 1].toString();
+      expect(
+        encodedLength([...crumbs, next]),
+        greaterThan(1000),
+        reason: 'one more breadcrumb would not have fit',
+      );
+    });
+
+    test('adds no marker when every breadcrumb fits', () {
+      final trail = BreadcrumbTrail();
+      trail.record('a');
+      trail.record('b');
+
+      expect(reportCrumbs(trail), [
+        trail.recent[0].toString(),
+        trail.recent[1].toString(),
+      ]);
+    });
+
+    test('keeps a full trail of 40 breadcrumbs within the default limit', () {
+      final trail = BreadcrumbTrail(capacity: 40);
+      for (var i = 0; i < 40; i++) {
+        trail.record('chat.reply_finished', {
+          'thread': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          'chars': i * 1000,
+        });
+      }
+
+      expect(encodedLength(reportCrumbs(trail)), lessThanOrEqualTo(4096));
+    });
+
+    test('cuts a single breadcrumb that is longer than the budget', () {
+      final trail = BreadcrumbTrail();
+      trail.record('old');
+      trail.record('huge', {'payload': 'ä' * 5000});
+
+      final crumbs = reportCrumbs(trail, maxValueBytes: 500);
+
+      expect(encodedLength(crumbs), lessThanOrEqualTo(500));
+      expect(crumbs.first, '... 1 older breadcrumbs dropped');
+      expect(crumbs.last, contains('huge'));
+      expect(crumbs.last, endsWith('…'));
+    });
+  });
+
   test('omits the breadcrumbs attribute when there are none', () {
     installCrashReporting(logger, breadcrumbs: BreadcrumbTrail());
 
     FlutterError.onError!(FlutterErrorDetails(exception: StateError('x')));
 
     expect(
-        logger.records.single.attributes.containsKey('breadcrumbs'), isFalse);
+      logger.records.single.attributes.containsKey('breadcrumbs'),
+      isFalse,
+    );
   });
 
   test('still calls the previously installed handlers', () {
