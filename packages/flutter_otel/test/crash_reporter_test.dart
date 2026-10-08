@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -59,6 +60,67 @@ void main() {
     expect(record.attributes['exception.message'], contains('bad input'));
     expect(record.attributes['exception.stacktrace'], stackTrace.toString());
     expect(handled, isFalse, reason: 'no previous handler was installed');
+  });
+
+  StackTrace deepStack(int frames) => StackTrace.fromString([
+        for (var i = 0; i < frames; i++)
+          '#$i      _RenderObjectSemantics._buildSemantics '
+              '(package:flutter/src/rendering/object.dart:6227)',
+      ].join('\n'));
+
+  test('trims a long stack trace to whole frames within the byte limit', () {
+    installCrashReporting(logger, maxValueBytes: 1000);
+    final stack = deepStack(200);
+
+    FlutterError.onError!(
+      FlutterErrorDetails(exception: StateError('x'), stack: stack),
+    );
+
+    final trimmed =
+        logger.records.single.attributes['exception.stacktrace'] as String;
+    final lines = trimmed.split('\n');
+    expect(utf8.encode(trimmed).length, lessThanOrEqualTo(1000));
+    expect(lines.first, stack.toString().split('\n').first);
+    expect(lines.last, '... ${200 - (lines.length - 1)} more frames');
+    expect(
+      stack.toString(),
+      startsWith(lines.take(lines.length - 1).join('\n')),
+      reason: 'keeps the top frames, cut at a frame boundary',
+    );
+  });
+
+  test('keeps the stack trace of an async error within the limit too', () {
+    installCrashReporting(logger, maxValueBytes: 1000);
+
+    PlatformDispatcher.instance.onError!(StateError('x'), deepStack(200));
+
+    final trimmed =
+        logger.records.single.attributes['exception.stacktrace'] as String;
+    expect(utf8.encode(trimmed).length, lessThanOrEqualTo(1000));
+  });
+
+  test('trims a long exception message within the byte limit', () {
+    installCrashReporting(logger, maxValueBytes: 100);
+
+    FlutterError.onError!(
+      FlutterErrorDetails(exception: StateError('ä' * 500)),
+    );
+
+    final message =
+        logger.records.single.attributes['exception.message'] as String;
+    expect(utf8.encode(message).length, lessThanOrEqualTo(100));
+    expect(message, startsWith('Bad state: ä'));
+  });
+
+  test('leaves the stack trace out when Flutter reports none', () {
+    installCrashReporting(logger);
+
+    FlutterError.onError!(FlutterErrorDetails(exception: StateError('x')));
+
+    expect(
+      logger.records.single.attributes.containsKey('exception.stacktrace'),
+      isFalse,
+    );
   });
 
   test('attaches recent breadcrumbs to the crash record', () {
