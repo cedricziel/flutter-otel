@@ -11,6 +11,7 @@ export 'src/batch_span_processor.dart';
 export 'src/console_log_record_exporter.dart';
 export 'src/multi_log_record_processor.dart';
 export 'src/metrics/metric_reader.dart';
+export 'src/metrics/periodic_exporting_metric_reader.dart';
 export 'src/metrics/sdk_meter_provider.dart';
 export 'src/otel_sdk_config.dart';
 export 'src/redacting_log_record_processor.dart';
