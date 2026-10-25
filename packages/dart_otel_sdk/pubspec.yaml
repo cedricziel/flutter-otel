@@ -11,7 +11,7 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
-  dart_otel_api: ^0.1.0
+  dart_otel_api: ^0.1.1
   http: ^1.2.0
   meta: ^1.15.0
 
