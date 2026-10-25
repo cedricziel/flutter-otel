@@ -63,12 +63,12 @@ void main() {
   });
 
   StackTrace deepStack(int frames) => StackTrace.fromString(
-    [
-      for (var i = 0; i < frames; i++)
-        '#$i      _RenderObjectSemantics._buildSemantics '
-            '(package:flutter/src/rendering/object.dart:6227)',
-    ].join('\n'),
-  );
+        [
+          for (var i = 0; i < frames; i++)
+            '#$i      _RenderObjectSemantics._buildSemantics '
+                '(package:flutter/src/rendering/object.dart:6227)',
+        ].join('\n'),
+      );
 
   test('trims a long stack trace to whole frames within the byte limit', () {
     installCrashReporting(logger, maxValueBytes: 1000);
@@ -145,10 +145,10 @@ void main() {
     // of the array, so every element costs its bytes plus framing.
     int varint(int value) => value < 0x80 ? 1 : (value < 0x4000 ? 2 : 3);
     int encodedLength(List<String> values) => values.fold(0, (sum, value) {
-      final string =
-          1 + varint(utf8.encode(value).length) + utf8.encode(value).length;
-      return sum + 1 + varint(string) + string;
-    });
+          final string =
+              1 + varint(utf8.encode(value).length) + utf8.encode(value).length;
+          return sum + 1 + varint(string) + string;
+        });
 
     List<String> reportCrumbs(BreadcrumbTrail trail, {int? maxValueBytes}) {
       installCrashReporting(

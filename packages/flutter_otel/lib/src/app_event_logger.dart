@@ -22,11 +22,11 @@ void noopAppEventLogger(
 /// info [LogRecord]. Never throws, even if [logger] does.
 AppEventLogger appEventLogger(Logger logger) =>
     (name, [attributes = const {}]) => safely(
-      () => logger.emit(
-        LogRecord(
-          body: name,
-          severity: LogSeverity.info,
-          attributes: attributes,
-        ),
-      ),
-    );
+          () => logger.emit(
+            LogRecord(
+              body: name,
+              severity: LogSeverity.info,
+              attributes: attributes,
+            ),
+          ),
+        );

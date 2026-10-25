@@ -144,15 +144,13 @@ class _CrashLog {
   }
 
   Map<String, Object?> _attributes(
-    String type,
-    String message,
-    String? stack,
-  ) => {
-    'exception.type': type,
-    'exception.message': _trimText(message, maxValueBytes),
-    if (stack != null)
-      'exception.stacktrace': _trimStackTrace(stack, maxValueBytes),
-  };
+          String type, String message, String? stack) =>
+      {
+        'exception.type': type,
+        'exception.message': _trimText(message, maxValueBytes),
+        if (stack != null)
+          'exception.stacktrace': _trimStackTrace(stack, maxValueBytes),
+      };
 
   void _summarizeAll() {
     _summaryTimer = null;
@@ -169,15 +167,15 @@ class _CrashLog {
   }
 
   void _emit(String body, Map<String, Object?> attributes) => logger.emit(
-    LogRecord(
-      body: body,
-      severity: LogSeverity.error,
-      attributes: {
-        ...attributes,
-        ...?_breadcrumbAttributes(breadcrumbs, maxValueBytes),
-      },
-    ),
-  );
+        LogRecord(
+          body: body,
+          severity: LogSeverity.error,
+          attributes: {
+            ...attributes,
+            ...?_breadcrumbAttributes(breadcrumbs, maxValueBytes),
+          },
+        ),
+      );
 }
 
 int _byteLength(String text) => utf8.encode(text).length;
@@ -218,9 +216,10 @@ Map<String, Object?>? _breadcrumbAttributes(
 ) {
   if (breadcrumbs == null || breadcrumbs.recent.isEmpty) return null;
   return {
-    'breadcrumbs': _trimBreadcrumbs([
-      for (final b in breadcrumbs.recent) b.toString(),
-    ], maxBytes),
+    'breadcrumbs': _trimBreadcrumbs(
+      [for (final b in breadcrumbs.recent) b.toString()],
+      maxBytes,
+    ),
   };
 }
 

@@ -24,11 +24,14 @@ void main() {
   });
 
   StackTrace stackAt(String function) => StackTrace.fromString(
-    '#0      $function (package:app/a.dart:1)\n'
-    '#1      drawFrame (package:flutter/src/rendering/binding.dart:699)',
-  );
+        '#0      $function (package:app/a.dart:1)\n'
+        '#1      drawFrame (package:flutter/src/rendering/binding.dart:699)',
+      );
 
-  void reportFlutterError(String message, {StackTrace? stack}) =>
+  void reportFlutterError(
+    String message, {
+    StackTrace? stack,
+  }) =>
       FlutterError.onError!(
         FlutterErrorDetails(exception: StateError(message), stack: stack),
       );
@@ -73,8 +76,7 @@ void main() {
 
       expect(
         [
-          for (final r in logger.records)
-            r.attributes['exception.repeat_count'],
+          for (final r in logger.records) r.attributes['exception.repeat_count']
         ],
         [null, 1, 3],
       );
@@ -189,9 +191,7 @@ void main() {
 
       reportFlutterError('a'); // forgotten, so logged in full again
       expect(
-        logger.records.last.attributes['exception.message'],
-        'Bad state: a',
-      );
+          logger.records.last.attributes['exception.message'], 'Bad state: a');
       expect(
         logger.records.last.attributes.containsKey('exception.repeat_count'),
         isFalse,

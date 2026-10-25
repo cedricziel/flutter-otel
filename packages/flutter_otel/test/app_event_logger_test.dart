@@ -23,9 +23,7 @@ void main() {
   });
 
   test('the no-op logger accepts events and records nothing', () {
-    expect(
-      () => noopAppEventLogger('auth.state', {'state': 'ready'}),
-      returnsNormally,
-    );
+    expect(() => noopAppEventLogger('auth.state', {'state': 'ready'}),
+        returnsNormally);
   });
 }

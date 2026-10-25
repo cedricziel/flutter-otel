@@ -13,10 +13,10 @@ class DefaultSessionManager extends SessionManager with WidgetsBindingObserver {
     DateTime Function()? clock,
     String Function()? idGenerator,
     bool observeLifecycle = true,
-  }) : _idleTimeout = idleTimeout,
-       _clock = clock ?? DateTime.now,
-       _idGenerator = idGenerator ?? (() => const Uuid().v4()),
-       _observing = observeLifecycle {
+  })  : _idleTimeout = idleTimeout,
+        _clock = clock ?? DateTime.now,
+        _idGenerator = idGenerator ?? (() => const Uuid().v4()),
+        _observing = observeLifecycle {
     _sessionId = _idGenerator();
     _lastActivity = _clock();
     if (observeLifecycle) {

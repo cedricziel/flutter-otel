@@ -12,7 +12,8 @@ void main() {
     await OTelSdk.reset();
   });
 
-  test('initialize does not throw when called with no prior Flutter binding '
+  test(
+      'initialize does not throw when called with no prior Flutter binding '
       'setup and session tracking enabled (the default)', () async {
     await expectLater(
       OTelSdk.initialize(
