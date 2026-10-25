@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/fake_logger.dart';
 
 Route<void> route(String? name, {Object? arguments}) => PageRouteBuilder<void>(
-  settings: RouteSettings(name: name, arguments: arguments),
-  pageBuilder: (_, __, ___) => const SizedBox(),
-);
+      settings: RouteSettings(name: name, arguments: arguments),
+      pageBuilder: (_, __, ___) => const SizedBox(),
+    );
 
 void main() {
   late RecordingLogger logger;
@@ -16,12 +16,13 @@ void main() {
   OTelNavigatorObserver build({
     RouteNameExtractor? extractor,
     UnnamedRoutePolicy policy = UnnamedRoutePolicy.placeholder,
-  }) => OTelNavigatorObserver(
-    logEvent: appEventLogger(logger),
-    breadcrumbs: trail,
-    routeNameExtractor: extractor,
-    unnamedRoutePolicy: policy,
-  );
+  }) =>
+      OTelNavigatorObserver(
+        logEvent: appEventLogger(logger),
+        breadcrumbs: trail,
+        routeNameExtractor: extractor,
+        unnamedRoutePolicy: policy,
+      );
 
   setUp(() {
     logger = RecordingLogger();
@@ -148,9 +149,8 @@ void main() {
     key.currentState!.pop();
     await tester.pumpAndSettle();
 
-    final actions = logger.records
-        .map((r) => r.attributes['navigation.action'])
-        .toList();
+    final actions =
+        logger.records.map((r) => r.attributes['navigation.action']).toList();
     expect(actions, ['push', 'push', 'pop']);
   });
 }

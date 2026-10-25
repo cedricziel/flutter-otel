@@ -43,8 +43,8 @@ class OTelNavigatorObserver extends NavigatorObserver {
     RouteNameExtractor? routeNameExtractor,
     this.unnamedRoutePolicy = UnnamedRoutePolicy.placeholder,
     this.unnamedPlaceholder = 'unnamed',
-  }) : _logEvent = logEvent,
-       _extractName = routeNameExtractor ?? _settingsName;
+  })  : _logEvent = logEvent,
+        _extractName = routeNameExtractor ?? _settingsName;
 
   final AppEventLogger _logEvent;
   final BreadcrumbTrail? breadcrumbs;
