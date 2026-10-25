@@ -1,7 +1,7 @@
 name: dart_otel_api
 description: >
   Platform-agnostic OpenTelemetry core API for flutter_otel: Resource,
-  signal interfaces (logs now; trace/metric stubs for later), and the
+  signal interfaces (logs, traces, metrics), and the
   processor/exporter pipeline contracts. Pure Dart, no Flutter dependency.
 version: 0.1.0
 homepage: https://github.com/cedricziel/flutter-otel
