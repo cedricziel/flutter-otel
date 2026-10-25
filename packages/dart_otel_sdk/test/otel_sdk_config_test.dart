@@ -66,6 +66,42 @@ void main() {
     });
   });
 
+  group('OTelSdkConfig metrics', () {
+    test('exports every 60 seconds by default, with no overrides', () {
+      final config = OTelSdkConfig(resource: resource());
+
+      expect(config.metricExportInterval, const Duration(seconds: 60));
+      expect(config.otlpMetricsEndpoint, isNull);
+      expect(config.metricExporter, isNull);
+    });
+
+    test('keeps the values it is given', () {
+      const exporter = NoopMetricExporter();
+      final endpoint = Uri.parse('https://metrics.example.com/v1/metrics');
+
+      final config = OTelSdkConfig(
+        resource: resource(),
+        otlpMetricsEndpoint: endpoint,
+        metricExporter: exporter,
+        metricExportInterval: const Duration(seconds: 5),
+      );
+
+      expect(config.otlpMetricsEndpoint, endpoint);
+      expect(config.metricExporter, same(exporter));
+      expect(config.metricExportInterval, const Duration(seconds: 5));
+    });
+
+    test('throws ArgumentError when metricExportInterval is not positive', () {
+      expect(
+        () => OTelSdkConfig(
+          resource: resource(),
+          metricExportInterval: Duration.zero,
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
   group('OTelSdkConfig console logging', () {
     test('is off by default and prints from debug up', () {
       final config = OTelSdkConfig(resource: resource());
