@@ -22,26 +22,26 @@ void main() {
     expect(trail.recent.map((b) => b.name), ['two', 'three']);
   });
 
-  test('asAppEventLogger records here and still forwards to the wrapped logger',
-      () {
-    final trail = BreadcrumbTrail();
-    final forwarded = <String>[];
+  test(
+    'asAppEventLogger records here and still forwards to the wrapped logger',
+    () {
+      final trail = BreadcrumbTrail();
+      final forwarded = <String>[];
 
-    trail.asAppEventLogger((name, [attributes = const {}]) {
-      forwarded.add(name);
-    })('auth.state', {'state': 'ready'});
+      trail.asAppEventLogger((name, [attributes = const {}]) {
+        forwarded.add(name);
+      })('auth.state', {'state': 'ready'});
 
-    expect(forwarded, ['auth.state']);
-    expect(trail.recent.single.name, 'auth.state');
-    expect(trail.recent.single.attributes, {'state': 'ready'});
-  });
+      expect(forwarded, ['auth.state']);
+      expect(trail.recent.single.name, 'auth.state');
+      expect(trail.recent.single.attributes, {'state': 'ready'});
+    },
+  );
 
   test('toString renders a compact single line', () {
-    final breadcrumb = Breadcrumb(
-      'auth.state',
-      {'state': 'ready'},
-      DateTime.utc(2026, 1, 2, 3, 4, 5),
-    );
+    final breadcrumb = Breadcrumb('auth.state', {
+      'state': 'ready',
+    }, DateTime.utc(2026, 1, 2, 3, 4, 5));
 
     expect(
       breadcrumb.toString(),

@@ -90,40 +90,44 @@ void main() {
   });
 
   group('OTelSdk redaction', () {
-    test('redacts logs and spans before export when a redactor is set',
-        () async {
-      final logExporter = FakeLogRecordExporter();
-      final spanExporter = FakeSpanExporter();
-      final sdk = await OTelSdk.initialize(
-        OTelSdkConfig(
-          resource: OTelResource(serviceName: 'test'),
-          logExporter: logExporter,
-          spanExporter: spanExporter,
-          redactor: PatternRedactor(),
-        ),
-      );
+    test(
+      'redacts logs and spans before export when a redactor is set',
+      () async {
+        final logExporter = FakeLogRecordExporter();
+        final spanExporter = FakeSpanExporter();
+        final sdk = await OTelSdk.initialize(
+          OTelSdkConfig(
+            resource: OTelResource(serviceName: 'test'),
+            logExporter: logExporter,
+            spanExporter: spanExporter,
+            redactor: PatternRedactor(),
+          ),
+        );
 
-      sdk.getLogger().error(
-        'login failed: password=hunter2',
-        attributes: {'http.request.header.authorization': 'opaque'},
-      );
-      final span = sdk.getTracer().startSpan('truenas.call')
-        ..setAttribute('url.full', 'https://root:pw@nas.local/api')
-        ..setStatus(StatusCode.error, description: 'token=abc rejected');
-      span.end();
-      await sdk.forceFlush();
+        sdk.getLogger().error(
+          'login failed: password=hunter2',
+          attributes: {'http.request.header.authorization': 'opaque'},
+        );
+        final span = sdk.getTracer().startSpan('truenas.call')
+          ..setAttribute('url.full', 'https://root:pw@nas.local/api')
+          ..setStatus(StatusCode.error, description: 'token=abc rejected');
+        span.end();
+        await sdk.forceFlush();
 
-      final record = logExporter.allRecords.single;
-      expect(record.body, 'login failed: password=[REDACTED]');
-      expect(
-        record.attributes['http.request.header.authorization'],
-        '[REDACTED]',
-      );
-      final exported = spanExporter.allSpans.single;
-      expect(
-          exported.attributes['url.full'], 'https://[REDACTED]@nas.local/api');
-      expect(exported.statusDescription, 'token=[REDACTED] rejected');
-    });
+        final record = logExporter.allRecords.single;
+        expect(record.body, 'login failed: password=[REDACTED]');
+        expect(
+          record.attributes['http.request.header.authorization'],
+          '[REDACTED]',
+        );
+        final exported = spanExporter.allSpans.single;
+        expect(
+          exported.attributes['url.full'],
+          'https://[REDACTED]@nas.local/api',
+        );
+        expect(exported.statusDescription, 'token=[REDACTED] rejected');
+      },
+    );
 
     test('redacts console output too', () async {
       final printed = <String>[];
@@ -332,8 +336,7 @@ void main() {
       },
     );
 
-    test(
-        'otlpEndpoint is used to build a real OTLP exporter that posts to '
+    test('otlpEndpoint is used to build a real OTLP exporter that posts to '
         '/v1/logs', () async {
       Uri? capturedUri;
       final client = MockClient((request) async {
@@ -380,8 +383,7 @@ void main() {
       expect(fake.allRecords, hasLength(1));
     });
 
-    test(
-        'otlpEndpoint is used to build a real OTLP span exporter that posts '
+    test('otlpEndpoint is used to build a real OTLP span exporter that posts '
         'to /v1/traces', () async {
       Uri? capturedUri;
       final client = MockClient((request) async {
@@ -432,8 +434,7 @@ void main() {
   });
 
   group('OTelSdk.shutdown', () {
-    test(
-        'flushes, shuts down the processor, and disposes the session '
+    test('flushes, shuts down the processor, and disposes the session '
         'manager', () async {
       final exporter = FakeLogRecordExporter();
       final sdk = await OTelSdk.initialize(
@@ -487,15 +488,14 @@ void main() {
       bool consoleLogging = false,
       LogSeverity consoleLogSeverity = LogSeverity.debug,
       LogRecordExporter? logExporter,
-    }) =>
-        OTelSdkConfig(
-          resource: OTelResource(serviceName: 'test'),
-          enabled: enabled,
-          consoleLogging: consoleLogging,
-          consoleLogSeverity: consoleLogSeverity,
-          logExporter: logExporter,
-          sessionTrackingEnabled: false,
-        );
+    }) => OTelSdkConfig(
+      resource: OTelResource(serviceName: 'test'),
+      enabled: enabled,
+      consoleLogging: consoleLogging,
+      consoleLogSeverity: consoleLogSeverity,
+      logExporter: logExporter,
+      sessionTrackingEnabled: false,
+    );
 
     test('prints records even when the SDK is disabled', () async {
       final sdk = await OTelSdk.initialize(

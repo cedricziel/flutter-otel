@@ -19,5 +19,6 @@ export 'src/app_event_logger.dart';
 export 'src/breadcrumb_trail.dart';
 export 'src/crash_reporter.dart';
 export 'src/default_session_manager.dart';
+export 'src/navigator_observer.dart';
 export 'src/otel_sdk.dart';
 export 'src/uncaught_error_logging.dart';

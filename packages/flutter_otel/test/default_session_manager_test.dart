@@ -91,8 +91,7 @@ void main() {
   });
 
   group('DefaultSessionManager lifecycle observation', () {
-    test(
-        'resuming after being backgrounded past the timeout starts a new '
+    test('resuming after being backgrounded past the timeout starts a new '
         'session', () {
       var now = DateTime(2026, 1, 1, 12, 0, 0);
       final manager = DefaultSessionManager(

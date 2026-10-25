@@ -137,6 +137,29 @@ handlers still run and their result is preserved.
 installUncaughtErrorLogging(otel.getLogger());
 ```
 
+## Navigation
+
+`OTelNavigatorObserver` records each push, pop, replace and remove as an
+`app.navigation` log record and, if you pass a `BreadcrumbTrail`, as a
+breadcrumb. Attributes are `navigation.action`, `screen.name` and
+`previous_screen.name`. Only `RouteSettings.name` is read, never route
+arguments. It never throws.
+
+```dart
+final observer = OTelNavigatorObserver(
+  logEvent: appEventLogger(otel.getLogger()),
+  breadcrumbs: trail,
+  // Collapse ids so /servers/<uuid> is recorded as /servers/:id.
+  routeNameExtractor: (route) => route.settings.name
+      ?.replaceAll(RegExp(r'/[0-9a-fA-F-]{36}'), '/:id'),
+  // Routes without a name: `placeholder` (default, "unnamed") or `skip`.
+  unnamedRoutePolicy: UnnamedRoutePolicy.skip,
+);
+
+MaterialApp(navigatorObservers: [observer]);
+// go_router: GoRouter(observers: [observer], ...)
+```
+
 ## Testing
 
 ```bash

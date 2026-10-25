@@ -19,8 +19,8 @@ void main() {
     originalPlatformHandler = PlatformDispatcher.instance.onError;
     flutterErrorsSeenByPrevious = [];
     platformErrorsSeenByPrevious = [];
-    FlutterError.onError =
-        (details) => flutterErrorsSeenByPrevious.add(details.exception);
+    FlutterError.onError = (details) =>
+        flutterErrorsSeenByPrevious.add(details.exception);
     PlatformDispatcher.instance.onError = (error, stack) {
       platformErrorsSeenByPrevious.add(error);
       return true;
