@@ -1,6 +1,6 @@
 # dart_otel_exporter_otlp_http
 
-OTLP/HTTP log and span exporters using JSON encoding (the protobuf JSON
+OTLP/HTTP log, span and metric exporters using JSON encoding (the protobuf JSON
 mapping) — no protobuf/binary codegen dependency.
 
 Pure Dart — **no Flutter dependency** — so it works from non-Flutter Dart
@@ -37,6 +37,14 @@ umbrella package.
   traces endpoint per `OTEL_EXPORTER_OTLP_ENDPOINT` /
   `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` semantics, mirroring
   `resolveLogsEndpoint`.
+- `OtlpHttpMetricExporter` — POSTs a batch of `MetricData` as OTLP/HTTP JSON
+  to a resolved `/v1/metrics` endpoint, mirroring the other exporters (never
+  throws, same header-injection pattern). Sums, gauges and histograms are
+  encoded with cumulative aggregation temporality; 64-bit integers are
+  strings per the protobuf JSON mapping.
+- `OtlpHttpMetricExporter.resolveMetricsEndpoint` — resolves the effective
+  metrics endpoint per `OTEL_EXPORTER_OTLP_ENDPOINT` /
+  `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` semantics.
 
 ## Install
 

@@ -1,0 +1,91 @@
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {"key": "service.name", "value": {"stringValue": "trueapp"}},
+          {"key": "service.version", "value": {"stringValue": "1.0.0"}}
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {"name": "my.meter", "version": "2.0.0"},
+          "metrics": [
+            {
+              "name": "http.requests",
+              "description": "Requests served",
+              "unit": "1",
+              "sum": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {"key": "http.method", "value": {"stringValue": "GET"}}
+                    ],
+                    "startTimeUnixNano": "1704067200000000000",
+                    "timeUnixNano": "1704067260000000000",
+                    "asInt": "5"
+                  }
+                ],
+                "aggregationTemporality": 2,
+                "isMonotonic": true
+              }
+            },
+            {
+              "name": "queue.depth",
+              "sum": {
+                "dataPoints": [
+                  {
+                    "attributes": [],
+                    "startTimeUnixNano": "1704067200000000000",
+                    "timeUnixNano": "1704067260000000000",
+                    "asDouble": -1.5
+                  }
+                ],
+                "aggregationTemporality": 2,
+                "isMonotonic": false
+              }
+            },
+            {
+              "name": "http.duration",
+              "unit": "ms",
+              "histogram": {
+                "dataPoints": [
+                  {
+                    "attributes": [],
+                    "startTimeUnixNano": "1704067200000000000",
+                    "timeUnixNano": "1704067260000000000",
+                    "count": "3",
+                    "sum": 30.5,
+                    "bucketCounts": ["1", "1", "1"],
+                    "explicitBounds": [5.0, 10.0],
+                    "min": 4.0,
+                    "max": 16.5
+                  }
+                ],
+                "aggregationTemporality": 2
+              }
+            }
+          ]
+        },
+        {
+          "scope": {"name": "other.meter"},
+          "metrics": [
+            {
+              "name": "battery.level",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [],
+                    "startTimeUnixNano": "1704067200000000000",
+                    "timeUnixNano": "1704067260000000000",
+                    "asInt": "87"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
