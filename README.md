@@ -173,7 +173,19 @@ resolve `/v1/logs`, `/v1/traces` and `/v1/metrics` against, while the
 per-signal endpoints — when set — are used verbatim as signal-specific
 overrides, exactly like the env vars' base-vs-per-signal precedence.
 `metricExportInterval` (default 60 seconds) mirrors
-`OTEL_METRIC_EXPORT_INTERVAL`. Batch tuning (`maxQueueSize`,
+`OTEL_METRIC_EXPORT_INTERVAL`. A configured `metricExporter` (like
+`logExporter` and `spanExporter`) takes precedence over `otlpEndpoint` and
+`otlpMetricsEndpoint`:
+
+```dart
+OTelSdkConfig(
+  resource: resource,
+  metricExporter: MyMetricExporter(), // implements MetricExporter
+  metricExportInterval: const Duration(seconds: 30),
+)
+```
+
+Batch tuning (`maxQueueSize`,
 `maxExportBatchSize`, `scheduledDelay`) and `httpClient` are shared across
 signals rather than duplicated per-signal — a deliberate simplification for
 now.
