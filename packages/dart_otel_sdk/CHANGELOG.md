@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/cedricziel/flutter-otel/compare/dart_otel_sdk-v0.1.3...dart_otel_sdk-v0.1.4) (2026-10-25)
+
+
+### Features
+
+* **dart_otel_sdk:** add metrics options to OTelSdkConfig ([#51](https://github.com/cedricziel/flutter-otel/issues/51)) ([faee0bf](https://github.com/cedricziel/flutter-otel/commit/faee0bf5165b863440d075cbdc6343c4e5f0c475))
+
 ## [0.1.3](https://github.com/cedricziel/flutter-otel/compare/dart_otel_sdk-v0.1.2...dart_otel_sdk-v0.1.3) (2026-10-25)
 
 
