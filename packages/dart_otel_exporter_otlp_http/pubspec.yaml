@@ -3,7 +3,7 @@ description: >
   OTLP/HTTP (JSON-encoded) log, span and metric exporters for flutter_otel.
   Pure Dart, no Flutter dependency, so it also works from non-Flutter Dart
   targets (server, CLI, web).
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/cedricziel/flutter-otel
 
 environment:

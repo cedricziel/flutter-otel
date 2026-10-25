@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/cedricziel/flutter-otel/compare/dart_otel_sdk-v0.1.2...dart_otel_sdk-v0.1.3) (2026-10-25)
+
+
+### Features
+
+* **dart_otel_sdk:** add SdkMeterProvider and PeriodicExportingMetricReader ([#48](https://github.com/cedricziel/flutter-otel/issues/48)) ([0131876](https://github.com/cedricziel/flutter-otel/commit/01318767593d07df47b6ca9a7c69ad339d76140d))
+
 ## [0.1.2](https://github.com/cedricziel/flutter-otel/compare/dart_otel_sdk-v0.1.1...dart_otel_sdk-v0.1.2) (2026-10-02)
 
 
