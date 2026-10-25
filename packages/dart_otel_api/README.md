@@ -3,8 +3,9 @@
 Platform-agnostic OpenTelemetry core for [flutter_otel](../../README.md):
 `OTelResource`, the logs signal contracts (fully implemented), the traces
 signal contracts (fully implemented, including `Span.current` for
-trace-to-log correlation and W3C Trace Context propagation helpers), and a
-minimal metrics stub so the shape is visibly ready for that signal later.
+trace-to-log correlation and W3C Trace Context propagation helpers), and the
+metrics signal contracts (`Meter`, `Counter`, `UpDownCounter`, `Histogram`,
+`Gauge`, `ObservableGauge`, `MetricData` and `MetricExporter`).
 
 Pure Dart — **no Flutter, `http`, or `uuid` dependency** — so it can be
 depended on from any Dart target (Flutter apps, but also server, CLI, or web
