@@ -11,19 +11,29 @@ class OTelSdkConfig {
     this.otlpEndpoint,
     this.otlpLogsEndpoint,
     this.otlpTracesEndpoint,
+    this.otlpMetricsEndpoint,
     this.otlpHeaders = const {},
     this.sessionTrackingEnabled = true,
     this.sessionTimeout = const Duration(minutes: 30),
     this.scheduledDelay = const Duration(seconds: 5),
+    this.metricExportInterval = const Duration(seconds: 60),
     this.maxExportBatchSize = 512,
     this.maxQueueSize = 2048,
     this.httpClient,
     this.logExporter,
     this.spanExporter,
+    this.metricExporter,
     this.consoleLogging = false,
     this.consoleLogSeverity = LogSeverity.debug,
     this.redactor,
   }) {
+    if (metricExportInterval <= Duration.zero) {
+      throw ArgumentError.value(
+        metricExportInterval,
+        'metricExportInterval',
+        'Must be greater than Duration.zero.',
+      );
+    }
     if (maxQueueSize <= 0) {
       throw ArgumentError.value(
         maxQueueSize,
@@ -55,9 +65,9 @@ class OTelSdkConfig {
   final bool enabled;
 
   /// General OTLP base endpoint (mirrors `OTEL_EXPORTER_OTLP_ENDPOINT`).
-  /// The logs exporter resolves `/v1/logs` and the traces exporter resolves
-  /// `/v1/traces` against it. Ignored per-signal when that signal's
-  /// specific endpoint or exporter override is set.
+  /// The logs exporter resolves `/v1/logs`, the traces exporter `/v1/traces`
+  /// and the metrics exporter `/v1/metrics` against it. Ignored per-signal
+  /// when that signal's specific endpoint or exporter override is set.
   final Uri? otlpEndpoint;
 
   /// Explicit logs endpoint override (mirrors
@@ -67,6 +77,10 @@ class OTelSdkConfig {
   /// Explicit traces endpoint override (mirrors
   /// `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`), used verbatim when set.
   final Uri? otlpTracesEndpoint;
+
+  /// Explicit metrics endpoint override (mirrors
+  /// `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`), used verbatim when set.
+  final Uri? otlpMetricsEndpoint;
 
   /// Extra HTTP headers sent with every OTLP export request (mirrors
   /// `OTEL_EXPORTER_OTLP_HEADERS`).
@@ -89,6 +103,10 @@ class OTelSdkConfig {
   /// to diverge.
   final Duration scheduledDelay;
 
+  /// How often metrics are collected and exported (mirrors
+  /// `OTEL_METRIC_EXPORT_INTERVAL`).
+  final Duration metricExportInterval;
+
   /// The maximum number of records/spans exported in a single batch.
   /// Shared across both signals (see [scheduledDelay]).
   final int maxExportBatchSize;
@@ -98,12 +116,12 @@ class OTelSdkConfig {
   final int maxQueueSize;
 
   /// The HTTP client used by the OTLP exporters. When set, this same client
-  /// instance is passed to (and shared by) both the logs and traces
+  /// instance is passed to (and shared by) the logs, traces and metrics
   /// exporters. When omitted, [OTelSdk.initialize] constructs and owns a
-  /// separate default `http.Client()` for each exporter that needs one — one
-  /// for logs, one for traces, not a single shared client — and closes each
-  /// on shutdown. Ignored for a signal whose exporter is overridden
-  /// ([logExporter]/[spanExporter]).
+  /// separate default `http.Client()` for each exporter that needs one, not
+  /// a single shared client, and closes each on shutdown. Ignored for a
+  /// signal whose exporter is overridden
+  /// ([logExporter]/[spanExporter]/[metricExporter]).
   final http.Client? httpClient;
 
   /// Overrides the log exporter entirely (e.g. for tests or a custom
@@ -113,6 +131,10 @@ class OTelSdkConfig {
   /// Overrides the span exporter entirely (e.g. for tests or a custom
   /// sink), bypassing [otlpEndpoint]/[otlpTracesEndpoint] resolution.
   final SpanExporter? spanExporter;
+
+  /// Overrides the metric exporter entirely (e.g. for tests or a custom
+  /// sink), bypassing [otlpEndpoint]/[otlpMetricsEndpoint] resolution.
+  final MetricExporter? metricExporter;
 
   /// Whether to also print every log record to the console, independent of
   /// [enabled] and of any OTLP export. Typically `kDebugMode`.
