@@ -74,6 +74,16 @@ void main() {
       );
     });
 
+    test('keeps attribute sets apart even when values contain delimiters', () {
+      final counter = newProvider().getMeter().createCounter('requests');
+
+      counter.add(1, attributes: {'a': 'x\u0001b\u0000String\u0000y'});
+      counter.add(1, attributes: {'a': 'x', 'b': 'y'});
+
+      final metric = reader.collect().single as SumMetricData;
+      expect(metric.points, hasLength(2));
+    });
+
     test('is cumulative across collections', () {
       final counter = newProvider().getMeter().createCounter('requests');
 

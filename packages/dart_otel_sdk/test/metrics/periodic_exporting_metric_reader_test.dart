@@ -100,6 +100,17 @@ void main() {
       expect(exporter.shutdownCallCount, 1);
     });
 
+    test('concurrent shutdowns share one final export', () async {
+      final reader = newReader();
+      final provider = newProvider(reader);
+      provider.getMeter().createCounter('requests').add(1);
+
+      await Future.wait([reader.shutdown(), reader.shutdown()]);
+
+      expect(exporter.exportedBatches, hasLength(1));
+      expect(exporter.shutdownCallCount, 1);
+    });
+
     test('stops exporting after shutdown', () async {
       final reader = newReader(interval: const Duration(milliseconds: 5));
       final provider = newProvider(reader);

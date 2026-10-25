@@ -36,6 +36,7 @@ class PeriodicExportingMetricReader implements MetricReader {
   Timer? _timer;
   bool _shutdown = false;
   Future<void>? _inFlight;
+  Future<void>? _shutdownFuture;
 
   @override
   void register(MetricProducer producer) => _producer = producer;
@@ -71,8 +72,9 @@ class PeriodicExportingMetricReader implements MetricReader {
   }
 
   @override
-  Future<void> shutdown() async {
-    if (_shutdown) return;
+  Future<void> shutdown() => _shutdownFuture ??= _performShutdown();
+
+  Future<void> _performShutdown() async {
     _timer?.cancel();
     _timer = null;
     await _export();

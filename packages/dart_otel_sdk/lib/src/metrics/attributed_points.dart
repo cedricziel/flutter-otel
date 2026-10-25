@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dart_otel_api/dart_otel_api.dart';
 
 /// The attribute set that collects measurements dropped by the cardinality
@@ -32,13 +34,14 @@ class AttributedPoints<V> {
     return (_entries[key] ??= (Map.unmodifiable(stored), create())).$2;
   }
 
-  // Sorted so key order does not matter; the type tag keeps 1 and '1' apart.
+  // Sorted so key order does not matter; the type tag keeps 1 and '1' apart,
+  // and JSON quoting keeps delimiters inside keys or values from colliding.
   static String _keyOf(MetricAttributes attributes) {
     if (attributes.isEmpty) return '';
     final keys = attributes.keys.toList()..sort();
-    return keys
-        .map(
-            (k) => '$k\u0000${attributes[k].runtimeType}\u0000${attributes[k]}')
-        .join('\u0001');
+    return jsonEncode([
+      for (final key in keys)
+        [key, attributes[key].runtimeType.toString(), '${attributes[key]}'],
+    ]);
   }
 }
