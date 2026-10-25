@@ -7,18 +7,13 @@ import 'package:http/http.dart' as http;
 import 'default_session_manager.dart';
 
 /// Top-level facade for flutter_otel: owns the singleton SDK instance, the
-/// [LoggerProvider] pipeline, the [TracerProvider] pipeline, and
-/// (optionally) a [SessionManager].
-///
-/// Metrics are not implemented yet; [loggerProvider] and [tracerProvider]
-/// are the signals surfaced today, but the shape (a provider +
-/// processor/exporter pipeline keyed off a shared [OTelResource]) is
-/// designed so `meterProvider` can be added later without reshaping this
-/// class.
+/// [LoggerProvider], [TracerProvider] and [MeterProvider] pipelines (all
+/// keyed off the same [OTelResource]), and (optionally) a [SessionManager].
 class OTelSdk {
   OTelSdk._({
     required this.loggerProvider,
     required this.tracerProvider,
+    required this.meterProvider,
     required this.sessionManager,
     required List<http.Client> ownedHttpClients,
   }) : _ownedHttpClients = ownedHttpClients;
@@ -29,13 +24,18 @@ class OTelSdk {
   /// Owns [Tracer] creation and the span processing/export pipeline.
   final TracerProvider tracerProvider;
 
+  /// Owns [Meter] creation and the metric collection/export pipeline. A
+  /// [NoopMeterProvider] when the SDK is disabled or has nowhere to export
+  /// metrics to.
+  final MeterProvider meterProvider;
+
   /// Tracks the current session, or `null` when
   /// [OTelSdkConfig.sessionTrackingEnabled] was `false`.
   final SessionManager? sessionManager;
 
-  // A list rather than a single client: logs and traces each resolve their
-  // own default-constructed client (when `config.httpClient` isn't given),
-  // so up to two owned clients may need closing on shutdown.
+  // A list rather than a single client: each signal resolves its own
+  // default-constructed client (when `config.httpClient` isn't given), so
+  // up to three owned clients may need closing on shutdown.
   final List<http.Client> _ownedHttpClients;
 
   static OTelSdk? _instance;
@@ -112,10 +112,15 @@ class OTelSdk {
       sessionManager: sessionManager,
     );
     final tracerProvider = SdkTracerProvider(processor: spanProcessor);
+    final meterProvider = _buildMeterProvider(
+      config,
+      onOwnedClient: onOwnedClient,
+    );
 
     final sdk = OTelSdk._(
       loggerProvider: loggerProvider,
       tracerProvider: tracerProvider,
+      meterProvider: meterProvider,
       sessionManager: sessionManager,
       ownedHttpClients: ownedHttpClients,
     );
@@ -195,6 +200,57 @@ class OTelSdk {
     );
   }
 
+  static MeterProvider _buildMeterProvider(
+    OTelSdkConfig config, {
+    required void Function(http.Client) onOwnedClient,
+  }) {
+    final exporter = _resolveMetricExporter(
+      config,
+      onOwnedClient: onOwnedClient,
+    );
+    if (exporter == null) return const NoopMeterProvider();
+    return SdkMeterProvider(
+      reader: PeriodicExportingMetricReader(
+        exporter,
+        config.resource,
+        interval: config.metricExportInterval,
+      ),
+      redactor: config.redactor,
+    );
+  }
+
+  /// Returns `null` when metrics are disabled or have nowhere to go, so the
+  /// caller skips the collection pipeline (and its timer) altogether.
+  static MetricExporter? _resolveMetricExporter(
+    OTelSdkConfig config, {
+    required void Function(http.Client) onOwnedClient,
+  }) {
+    if (!config.enabled) return null;
+    final override = config.metricExporter;
+    if (override != null) return override;
+    final endpoint = OtlpHttpMetricExporter.resolveMetricsEndpoint(
+      baseEndpoint: config.otlpEndpoint,
+      metricsEndpoint: config.otlpMetricsEndpoint,
+    );
+    if (endpoint == null) return null;
+    final client = config.httpClient;
+    if (client != null) {
+      return OtlpHttpMetricExporter(
+        endpoint: endpoint,
+        httpClient: client,
+        headers: config.otlpHeaders,
+      );
+    }
+    final ownedClient = http.Client();
+    onOwnedClient(ownedClient);
+    return OtlpHttpMetricExporter(
+      endpoint: endpoint,
+      httpClient: ownedClient,
+      headers: config.otlpHeaders,
+      ownsClient: true,
+    );
+  }
+
   /// The current SDK instance. Throws [StateError] if [initialize] has not
   /// been called (or has been [reset]).
   static OTelSdk get instance {
@@ -228,12 +284,16 @@ class OTelSdk {
   Tracer getTracer({String name = 'flutter_otel', String? version}) =>
       tracerProvider.getTracer(name: name, version: version);
 
-  /// Flushes the log and trace pipelines (and, once implemented, the metric
-  /// pipeline).
+  /// Convenience passthrough to `meterProvider.getMeter(...)`.
+  Meter getMeter({String name = 'flutter_otel', String? version}) =>
+      meterProvider.getMeter(name: name, version: version);
+
+  /// Flushes the log, trace and metric pipelines.
   Future<void> forceFlush() async {
     await Future.wait([
       loggerProvider.forceFlush(),
       tracerProvider.forceFlush(),
+      meterProvider.forceFlush(),
     ]);
     // Console logging prints through debugPrint, which queues and throttles
     // long output; a flush is only done once that queue has drained.
@@ -241,11 +301,15 @@ class OTelSdk {
   }
 
   /// Flushes and releases every resource owned by this SDK instance: the
-  /// log and span processors/exporters, any default-constructed HTTP
+  /// log, span and metric pipelines, any default-constructed HTTP
   /// client(s), and the session manager's lifecycle observer.
   Future<void> shutdown() async {
     await forceFlush();
-    await Future.wait([loggerProvider.shutdown(), tracerProvider.shutdown()]);
+    await Future.wait([
+      loggerProvider.shutdown(),
+      tracerProvider.shutdown(),
+      meterProvider.shutdown(),
+    ]);
     final manager = sessionManager;
     if (manager is DefaultSessionManager) {
       manager.dispose();

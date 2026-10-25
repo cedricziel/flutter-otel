@@ -76,6 +76,9 @@ Future<void> main() async {
     otel.getLogger().info('config loaded');
   });
 
+  // Metrics are aggregated in memory and exported every 60 seconds.
+  otel.getMeter().createCounter('app.starts').add(1);
+
   runApp(const MyApp());
 }
 ```

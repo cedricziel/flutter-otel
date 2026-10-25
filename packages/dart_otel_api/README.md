@@ -3,8 +3,9 @@
 Platform-agnostic OpenTelemetry core for [flutter_otel](../../README.md):
 `OTelResource`, the logs signal contracts (fully implemented), the traces
 signal contracts (fully implemented, including `Span.current` for
-trace-to-log correlation and W3C Trace Context propagation helpers), and a
-minimal metrics stub so the shape is visibly ready for that signal later.
+trace-to-log correlation and W3C Trace Context propagation helpers), and the
+metrics signal contracts (`Meter`, `Counter`, `UpDownCounter`, `Histogram`,
+`Gauge`, `ObservableGauge`, `MetricData` and `MetricExporter`).
 
 Pure Dart — **no Flutter, `http`, or `uuid` dependency** — so it can be
 depended on from any Dart target (Flutter apps, but also server, CLI, or web
@@ -56,9 +57,11 @@ It has no dependencies on other workspace members.
 - `formatTraceparent` / `parseTraceparent` — encode/decode a W3C Trace
   Context `traceparent` header, for propagating the active trace across an
   outgoing HTTP request (used by `dart_otel_instrumentation_dio`).
-- `Meter` / `MeterProvider` with `Noop*` implementations — a placeholder
-  proving the core doesn't need to change shape when metrics are
-  implemented for real.
+- `Meter` / `MeterProvider` and the instruments — `dart_otel_sdk` provides
+  the real implementation; the `Noop*` ones are used when metrics are
+  disabled or have no backing SDK.
+- `MetricData` / `MetricExporter` — the data model and exporter contract
+  shared by the SDK and the OTLP exporter.
 
 ## Install
 

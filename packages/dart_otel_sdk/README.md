@@ -54,13 +54,24 @@ Depends on `dart_otel_api`, `dart_otel_exporter_otlp_http`, `flutter`
   `Span.runWithSpan` (a `dart:async` `Zone`), which is what makes
   `Span.current` — and therefore log correlation — automatic across `await`
   gaps and nested spans.
+- `SdkMeterProvider` / `SdkMeter` — the concrete metrics pipeline. Counters
+  and up-down counters aggregate as sums, histograms into explicit buckets
+  (the specification's default boundaries unless overridden) and gauges as
+  last values, all with cumulative temporality. Each instrument keeps at
+  most `maxCardinality` (default 2000) attribute sets and folds the rest
+  into one `otel.metric.overflow` data point. An optional `Redactor`
+  cleans attribute values before aggregation.
+- `PeriodicExportingMetricReader` — collects from the meter provider and
+  exports to a `MetricExporter` every `interval` (default 60 seconds), with
+  `forceFlush()` and a final export on `shutdown()`. Export failures are
+  reported to stderr, never thrown.
 - `DefaultSessionManager` — generates a new session ID once more than the
   configured idle timeout (default 30 minutes) has elapsed between
   `touch()` calls, and (optionally) registers a `WidgetsBindingObserver` so
   resuming from the background after a long gap starts a new session.
 - `OTelSdkConfig` / `OTelSdk` — the configuration object and top-level
-  facade apps actually call. `OTelSdk` owns both the log and span
-  processor/exporter pipelines; `forceFlush()`/`shutdown()` reach both.
+  facade apps actually call. `OTelSdk` owns the log, span and metric
+  pipelines; `forceFlush()`/`shutdown()` reach all of them.
 
 ## Install
 
