@@ -37,16 +37,16 @@ final class HistogramDataPoint extends MetricDataPoint {
     required super.time,
     required this.count,
     required this.sum,
-    required this.min,
-    required this.max,
+    this.min,
+    this.max,
     required this.bucketCounts,
     required this.explicitBounds,
   });
 
   final int count;
   final double sum;
-  final double min;
-  final double max;
+  final double? min;
+  final double? max;
   final List<int> bucketCounts;
   final List<double> explicitBounds;
 }
