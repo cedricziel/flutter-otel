@@ -1,7 +1,7 @@
 import 'meter.dart';
 
-/// Vends [Meter]s, mirroring [LoggerProvider]'s shape for the future
-/// metrics signal.
+/// Vends [Meter]s, mirroring `LoggerProvider`'s shape for the metrics
+/// signal.
 abstract class MeterProvider {
   /// Returns a [Meter] for the given instrumentation scope.
   Meter getMeter({String name = 'flutter_otel', String? version});
@@ -13,8 +13,8 @@ abstract class MeterProvider {
   Future<void> shutdown();
 }
 
-/// No-op [MeterProvider] used until a real metrics SDK implementation
-/// exists. Always returns a [NoopMeter]; flush/shutdown are instant no-ops.
+/// No-op [MeterProvider] used when metrics have no backing SDK. Always
+/// returns a [NoopMeter]; flush/shutdown are instant no-ops.
 class NoopMeterProvider implements MeterProvider {
   const NoopMeterProvider();
 
