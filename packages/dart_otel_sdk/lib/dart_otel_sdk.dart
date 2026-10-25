@@ -1,5 +1,5 @@
-/// Concrete OpenTelemetry SDK implementation: log and span processors, in
-/// pure Dart with no Flutter dependency. The Flutter-specific facade
+/// Concrete OpenTelemetry SDK implementation: log and span processors and
+/// the metrics pipeline, in pure Dart with no Flutter dependency. The Flutter-specific facade
 /// (`OTelSdk`) and session tracking (`DefaultSessionManager`) live in
 /// `flutter_otel`, which builds on this package.
 library;
@@ -10,6 +10,8 @@ export 'src/batch_log_record_processor.dart';
 export 'src/batch_span_processor.dart';
 export 'src/console_log_record_exporter.dart';
 export 'src/multi_log_record_processor.dart';
+export 'src/metrics/metric_reader.dart';
+export 'src/metrics/sdk_meter_provider.dart';
 export 'src/otel_sdk_config.dart';
 export 'src/redacting_log_record_processor.dart';
 export 'src/redacting_span_processor.dart';
