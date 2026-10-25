@@ -3,7 +3,7 @@ description: >
   Batteries-included OpenTelemetry SDK for Flutter apps: logs, traces and
   metrics, optional session tracking, and OTLP/HTTP exporters. This is the
   package apps depend on.
-version: 0.1.8
+version: 0.1.9
 homepage: https://github.com/cedricziel/flutter-otel
 
 environment:
