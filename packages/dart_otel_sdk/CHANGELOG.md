@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/cedricziel/flutter-otel/compare/dart_otel_sdk-v0.1.4...dart_otel_sdk-v0.1.5) (2026-10-25)
+
+
+### Features
+
+* **flutter_otel:** wire a MeterProvider into OTelSdk ([#53](https://github.com/cedricziel/flutter-otel/issues/53)) ([cd02145](https://github.com/cedricziel/flutter-otel/commit/cd0214544b7d5cab27ee035b00cf0ef009d4384d))
+
 ## [0.1.4](https://github.com/cedricziel/flutter-otel/compare/dart_otel_sdk-v0.1.3...dart_otel_sdk-v0.1.4) (2026-10-25)
 
 
