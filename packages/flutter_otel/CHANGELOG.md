@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.7...flutter_otel-v0.1.8) (2026-10-25)
+
+
+### Features
+
+* **flutter_otel:** add OTelNavigatorObserver ([#45](https://github.com/cedricziel/flutter-otel/issues/45)) ([0a66db5](https://github.com/cedricziel/flutter-otel/commit/0a66db502178609cff9727a10f2c33d638842e10))
+
 ## [0.1.7](https://github.com/cedricziel/flutter-otel/compare/flutter_otel-v0.1.6...flutter_otel-v0.1.7) (2026-10-08)
 
 
