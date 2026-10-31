@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/cedricziel/flutter-otel/compare/dart_otel_instrumentation_messaging-v0.1.2...dart_otel_instrumentation_messaging-v0.1.3) (2026-10-31)
+
+
+### Bug Fixes
+
+* **messaging:** set error.type on spans of JSON-RPC error answers ([#55](https://github.com/cedricziel/flutter-otel/issues/55)) ([be7a880](https://github.com/cedricziel/flutter-otel/commit/be7a880b8ffa472d2f9c483ae3e0060744e95719))
+
 ## [0.1.2](https://github.com/cedricziel/flutter-otel/compare/dart_otel_instrumentation_messaging-v0.1.1...dart_otel_instrumentation_messaging-v0.1.2) (2026-10-08)
 
 
