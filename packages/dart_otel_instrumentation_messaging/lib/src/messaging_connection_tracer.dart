@@ -109,6 +109,10 @@ class MessagingConnectionTracer {
   /// Ends a request's span: with [errorCode] when the peer answered with a
   /// JSON-RPC error, with [failure] when there was no answer, else as a
   /// success.
+  ///
+  /// Every failed span carries `error.type`, as the semantic conventions ask:
+  /// the [failure]'s type, else the error code as a string (the RPC
+  /// conventions' rule for a status code).
   void finishRequest(Span? span, {int? errorCode, Object? failure}) {
     if (span == null) return;
     _guard(() {
@@ -117,6 +121,8 @@ class MessagingConnectionTracer {
       }
       if (failure != null) {
         span.setAttribute('error.type', failure.runtimeType.toString());
+      } else if (errorCode != null) {
+        span.setAttribute('error.type', '$errorCode');
       }
       span
         ..setStatus(

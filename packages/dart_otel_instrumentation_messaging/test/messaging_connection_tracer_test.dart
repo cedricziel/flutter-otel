@@ -181,8 +181,29 @@ void main() {
 
       final recorded = spanNamed('prompt.submit send');
       expect(recorded.attributes['rpc.jsonrpc.error_code'], 4009);
+      expect(recorded.attributes['error.type'], '4009');
       expect(recorded.status, StatusCode.error);
       expect(recorded.ended, isTrue);
+    });
+
+    test('a failure wins over an error code as the error type', () {
+      final span = messaging.startRequest('prompt.submit', 1);
+
+      messaging.finishRequest(span, errorCode: 4009, failure: StateError('x'));
+
+      final recorded = spanNamed('prompt.submit send');
+      expect(recorded.attributes['error.type'], 'StateError');
+      expect(recorded.attributes['rpc.jsonrpc.error_code'], 4009);
+    });
+
+    test('a success has no error type', () {
+      final span = messaging.startRequest('prompt.submit', 1);
+
+      messaging.finishRequest(span);
+
+      final recorded = spanNamed('prompt.submit send');
+      expect(recorded.attributes.containsKey('error.type'), isFalse);
+      expect(recorded.status, StatusCode.ok);
     });
 
     test('a failure without an answer is recorded by error type', () {
