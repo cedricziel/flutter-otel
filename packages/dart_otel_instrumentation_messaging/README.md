@@ -12,7 +12,8 @@ A `MessagingConnectionTracer` records:
 - each request as a `SpanKind.producer` span named `<name> send`, open until
   you call `finishRequest` (`messaging.system`, `messaging.operation.type`
   `send`, `messaging.destination.name`, `messaging.message.id`, and
-  `rpc.jsonrpc.error_code` / `error.type` when it failed),
+  `rpc.jsonrpc.error_code` when the peer answered with an error, and
+  `error.type` on every failure: the failure's type, else the error code),
 - each server event as an instant `SpanKind.consumer` span named
   `<name> receive`.
 
